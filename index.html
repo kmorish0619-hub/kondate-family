@@ -1,0 +1,1965 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#16324F">
+<title>献立帳</title>
+<style>
+:root{
+  --ink:#16324F; --paper:#FBFAF6; --card:#FFF; --line:#E0DDD3;
+  --sumi:#22262B; --grey:#8A8B86; --yuzu:#D8A62E; --danger:#A6473C;
+  --main:#C4664B; --side:#6D9A5B;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  --mincho:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--sumi);font-family:var(--sans);font-size:15px;line-height:1.6;
+  padding-bottom:calc(66px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:inherit}
+button{cursor:pointer;border:none;background:none;padding:0}
+.hidden{display:none !important}
+
+#gate{position:fixed;inset:0;background:var(--ink);color:#fff;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;z-index:100;padding:24px}
+#gate h1{font-family:var(--mincho);font-size:34px;font-weight:400;letter-spacing:.22em;margin:0}
+#gate p{color:#A9BFD4;font-size:13px;margin:0}
+#gate input{width:220px;text-align:center;letter-spacing:.15em;padding:12px;border-radius:10px;
+  border:1px solid #3D5B7C;background:#0F2438;color:#fff}
+#gate button{background:var(--yuzu);color:#16324F;font-weight:700;padding:12px 34px;border-radius:10px}
+#gateErr{color:#F0B4AC;font-size:13px;min-height:20px}
+
+header{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line);
+  padding:12px 16px 9px;padding-top:calc(12px + env(safe-area-inset-top))}
+header .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#hTitle{font-family:var(--mincho);font-size:21px;font-weight:400;margin:0;text-align:center}
+#hSub{font-size:11px;color:var(--grey);text-align:center}
+.navbtn{font-size:22px;color:var(--ink);padding:2px 12px;font-family:var(--mincho)}
+main{padding:14px 16px 20px;max-width:640px;margin:0 auto;min-height:70vh}
+
+.week{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;color:var(--grey);text-align:center;padding-bottom:5px}
+.week .sun{color:#B2564A}.week .sat{color:#4A7FA8}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:8px;aspect-ratio:1/1.15;
+  padding:4px 2px 0;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;overflow:hidden}
+.cell.out{background:transparent;border-color:transparent}
+.cell.out .dnum{color:#CBC9C2}
+.cell.today{box-shadow:inset 0 0 0 2px var(--yuzu)}
+.cell.pick{background:#EAF0F6;border-color:var(--ink)}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--ink)}
+.prow{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid var(--line)}
+.prow:last-of-type{border-bottom:none}
+.pk{flex:none;width:34px;font-size:11px;color:#fff;text-align:center;padding:3px 0;border-radius:4px}
+.pk.main{background:var(--main)}.pk.side{background:var(--side)}
+.pnm{flex:1;text-align:left;font-size:14.5px;font-weight:600;color:var(--ink);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.padd{flex:1;text-align:left;font-size:13px;color:var(--grey)}
+.dnum{font-family:var(--mincho);font-size:15px;line-height:1.1;color:var(--ink)}
+.cell.sun .dnum{color:#B2564A}.cell.sat .dnum{color:#4A7FA8}
+.dots{display:flex;gap:3px}
+.dot{width:5px;height:5px;border-radius:50%}
+.dot.main{background:var(--main)}.dot.side{background:var(--side)}
+.thumb{position:absolute;inset:auto 0 0 0;height:24px;width:100%;object-fit:cover}
+.check{position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:var(--ink);
+  color:#fff;font-size:10px;line-height:15px;text-align:center}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px}
+.lbl{font-size:12px;color:var(--grey);margin-bottom:5px}
+.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff}
+textarea.field{min-height:72px;resize:vertical;line-height:1.7}
+textarea.field.mid{min-height:110px}
+textarea.field.tall{min-height:200px}
+textarea.field.taller{min-height:260px}
+.btn{background:var(--ink);color:#fff;padding:11px 18px;border-radius:9px;font-weight:600;font-size:14px}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+.btn.quiet{background:#EFEDE6;color:var(--sumi)}
+.btn.wide{display:block;width:100%;text-align:center}
+.btn:disabled{opacity:.45}
+.mini{font-size:13.5px;padding:0 16px;min-height:44px;border-radius:10px;background:#EFEDE6;
+  display:inline-flex;align-items:center;justify-content:center}
+.mini.line{background:#fff;border:1px solid var(--line)}
+.mini.gold{background:var(--yuzu);color:#16324F;font-weight:600}
+.seeRecipe{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:var(--ink);color:#fff;padding:12px 14px;font-size:14px;font-weight:600;width:100%}
+.seeRecipe .sub{font-size:11px;color:#B9CBDB;font-weight:400}
+h2.sec{font-family:var(--mincho);font-size:16px;font-weight:400;margin:20px 0 9px}
+h2.sec:first-child{margin-top:2px}
+.empty{color:var(--grey);font-size:13px;text-align:center;padding:26px 12px;border:1px dashed var(--line);border-radius:12px}
+.note{font-size:12px;color:var(--grey);line-height:1.5}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
+
+.dish{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.dish .pic{width:100%;aspect-ratio:16/10;background:#F1EFE8;display:flex;align-items:center;justify-content:center;
+  color:#C9C7BF;font-family:var(--mincho);font-size:13px;position:relative}
+.dish .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.kind{position:absolute;top:8px;left:8px;color:#fff;font-size:11px;padding:3px 9px;border-radius:5px}
+.kind.main{background:var(--main)}.kind.side{background:var(--side)}
+.bookmark{position:absolute;top:8px;right:8px;background:rgba(22,50,79,.9);color:#fff;font-size:10px;
+  padding:3px 8px;border-radius:5px;font-family:var(--mincho)}
+.dish .body{padding:11px 12px}
+.dish .nm{font-size:15px;font-weight:600;line-height:1.35}
+.dish .meta{font-size:11px;color:var(--grey);margin-top:3px}
+.dish .acts{display:flex;gap:6px;margin-top:0;flex-wrap:wrap}
+.tapzone{display:block;width:100%;text-align:left;background:none}
+.tapzone:active{background:#F6F4EE}
+.slotAdd{border:1px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--grey);
+  font-size:13px;margin-bottom:10px;background:#FDFCFA}
+
+.strip{display:flex;gap:6px;overflow-x:auto;padding:8px 0;margin:-8px 0 0;
+  position:sticky;top:var(--hh,56px);z-index:15;background:var(--paper)}
+.strip button{flex:none;min-width:52px;padding:7px 4px;border-radius:9px;background:#EFEDE6;text-align:center;line-height:1.25}
+.strip button .d{font-family:var(--mincho);font-size:15px}
+.strip button .w{font-size:10px;color:var(--grey)}
+.strip button .pip{width:4px;height:4px;border-radius:50%;background:var(--main);margin:2px auto 0}
+.strip button.on .pip{background:var(--yuzu)}
+.strip button.on{background:var(--ink);color:#fff}
+.strip button.on .w{color:#C3D4E4}
+.photoStrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}
+.photoStrip img{flex:none;width:96px;height:96px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+.photoStrip figure{flex:none;margin:0;text-align:center}
+.photoStrip figcaption{font-size:10px;color:var(--grey);margin-top:2px}
+.photoCell{flex:none;width:104px}
+.photoCell .ph{position:relative;width:104px;height:104px}
+.photoCell .ph img{width:104px;height:104px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+.photoCell .ph img.cov{outline:3px solid var(--yuzu);outline-offset:-3px}
+.photoCell input{width:104px;margin-top:4px;font-size:11px;padding:4px 2px;text-align:center;
+  border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--sumi)}
+.pbtn{position:absolute;width:26px;height:26px;border-radius:50%;font-size:14px;line-height:26px;text-align:center}
+.pbtn.del{top:4px;right:4px;background:rgba(22,50,79,.85);color:#fff}
+.pbtn.star{top:4px;left:4px;background:rgba(255,255,255,.9);color:#B4B2AA}
+.pbtn.star.on{background:var(--yuzu);color:#fff}
+
+.item{display:flex;gap:10px;align-items:flex-start;padding:10px 2px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item .grow{flex:1;min-width:0}
+.item .t{font-size:14px;word-break:break-word}
+.item .s{font-size:12px;color:var(--grey);word-break:break-word}
+.item.checked .t{text-decoration:line-through;color:var(--grey)}
+.tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--line);background:#fff;flex:none;
+  margin-top:1px;font-size:13px;color:#fff;line-height:20px;text-align:center}
+.tick.on{background:var(--ink);border-color:var(--ink)}
+.amt{font-size:13px;color:var(--ink);flex:none;white-space:nowrap}
+.catHead{background:#F1EFE8;border-radius:7px;padding:5px 10px;font-size:12px;margin:14px 0 4px;color:#5A5C58}
+.del{color:var(--danger);font-size:12px;flex:none}
+
+.bookGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bookGrid button{aspect-ratio:1;border-radius:9px;overflow:hidden;background:#F1EFE8;position:relative}
+.bookGrid img{width:100%;height:100%;object-fit:cover}
+.bookGrid .cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.68));
+  color:#fff;font-size:10px;padding:14px 5px 4px;text-align:left;line-height:1.25}
+.bookGrid .cnt{position:absolute;top:4px;right:4px;background:rgba(255,255,255,.9);color:var(--ink);
+  font-size:9px;padding:1px 5px;border-radius:8px}
+.bookGrid .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#C0BEB6;font-family:var(--mincho);font-size:20px}
+
+#sheet{position:fixed;inset:0;z-index:50;display:none}
+#sheet.on{display:block}
+#sheetBg{position:absolute;inset:0;background:rgba(20,30,42,.45)}
+#sheetBody{position:absolute;left:0;right:0;bottom:0;max-height:92vh;background:var(--paper);
+  border-radius:18px 18px 0 0;padding:0;animation:up .2s ease-out;
+  display:flex;flex-direction:column;overflow:hidden}
+@keyframes up{from{transform:translateY(14px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){#sheetBody{animation:none}}
+.sheetScroll{overflow-y:auto;flex:1 1 auto;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
+.sheetHead{flex:0 0 auto;background:var(--paper);display:flex;align-items:center;
+  justify-content:space-between;gap:10px;padding:15px 16px 10px;margin:0;
+  border-radius:18px 18px 0 0;box-shadow:0 6px 10px -8px rgba(20,30,42,.25)}
+.sheetHead h3{font-family:var(--mincho);font-size:18px;font-weight:400;margin:0}
+#sheetClose{position:absolute;z-index:60;width:44px;height:44px;border-radius:50%;
+  background:rgba(22,50,79,.92);color:#fff;font-size:22px;line-height:44px;text-align:center;
+  box-shadow:0 2px 10px rgba(20,30,42,.3);left:50%;transform:translateX(-22px);
+  bottom:calc(92vh + 10px)}
+
+nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(251,250,246,.96);backdrop-filter:blur(8px);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav button{padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--grey)}
+nav button .ico{font-family:var(--mincho);font-size:17px;line-height:1}
+nav button .nm{font-size:10px}
+nav button.on{color:var(--ink)} nav button.on .ico{color:var(--yuzu)}
+#pickBar{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));z-index:31;padding:10px 16px;
+  background:rgba(251,250,246,.97);border-top:1px solid var(--line);display:flex;gap:8px}
+#pickBar .btn{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));
+  background:var(--ink);color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;z-index:80;
+  opacity:0;pointer-events:none;transition:opacity .2s;max-width:88%;text-align:center}
+.toast.on{opacity:1}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+ol.steps{padding-left:0;list-style:none;margin:0;counter-reset:s}
+ol.steps li{counter-increment:s;display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+ol.steps li:last-child{border-bottom:none}
+ol.steps li::before{content:counter(s);flex:none;width:22px;height:22px;border-radius:50%;background:#EFEDE6;
+  font-size:12px;text-align:center;line-height:22px;color:#5A5C58}
+:focus-visible{outline:2px solid var(--yuzu);outline-offset:2px}
+
+/* ---------- 写真は必要になったときだけ読む ---------- */
+function photosOf(id){ return PH[id]||{}; }
+function ensurePhotos(id,after){
+  if(PHLOAD[id]){ if(after)after(); return; }
+  if(!DB){ PH[id]=(S.photos&&S.photos[id])||{}; PHLOAD[id]=1; if(after)after(); return; }
+  DB.ref("photos/"+id).once("value").then(sn=>{
+    PH[id]=sn.val()||{}; PHLOAD[id]=1; if(after)after();
+  }).catch(()=>{ PH[id]={}; PHLOAD[id]=1; if(after)after(); });
+}
+function savePhoto(id,pid,obj){
+  PH[id]=PH[id]||{}; PH[id][pid]=obj; PHLOAD[id]=1;
+  if(DB) DB.ref(`photos/${id}/${pid}`).set(obj).catch(()=>toast("写真を保存できませんでした"));
+  else { S.photos=S.photos||{}; S.photos[id]=PH[id]; persist(); }
+}
+function removePhoto(id,pid){
+  if(PH[id]) delete PH[id][pid];
+  if(DB) DB.ref(`photos/${id}/${pid}`).remove().catch(()=>{});
+  else { if(S.photos&&S.photos[id]) delete S.photos[id][pid]; persist(); }
+}
+/* 一覧やカードに出す小さい写真を作る */
+function makeThumb(dataURI,cb){
+  const img=new Image();
+  img.onload=()=>{
+    let w=img.width,h=img.height; const sc=Math.min(1,THUMB_MAX/Math.max(w,h));
+    w=Math.round(w*sc); h=Math.round(h*sc);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    cb(cv.toDataURL("image/jpeg",THUMB_Q));
+  };
+  img.onerror=()=>cb(null);
+  img.src=dataURI;
+}
+/* 旧方式（レシピの中に写真を埋め込む）から新方式へ、一度だけ移す */
+function pendingMigration(){
+  return Object.entries(S.recipes||{}).filter(([id,r])=>r.photos&&Object.keys(r.photos).length);
+}
+function migratePhotos(){
+  const olds=pendingMigration();
+  if(!olds.length){ if(window._manualMig){toast("切り替えは済んでいます");window._manualMig=0} return; }
+  toast(`写真の保存方法を切り替えています（${olds.length}件）`);
+  let done=0;
+  olds.forEach(([id,r])=>{
+    const entries=Object.entries(r.photos);
+    const meta={};
+    entries.forEach(([pid,pobj])=>{
+      if(pobj&&pobj.img) savePhoto(id,pid,{img:pobj.img,date:pobj.date||key(today)});
+      meta[pid]={date:(pobj&&pobj.date)||key(today)};
+    });
+    const coverId=(r.cover&&r.photos[r.cover])?r.cover
+      :entries.sort((a,b)=>((a[1].date||"")<(b[1].date||"")?1:-1))[0][0];
+    const src=r.photos[coverId]&&r.photos[coverId].img;
+    const finish=thumb=>{
+      const nr=Object.assign({},r,{photoMeta:meta,cover:coverId});
+      if(thumb) nr.thumb=thumb;
+      delete nr.photos;
+      saveQuiet(["recipes",id],nr);
+      if(++done===olds.length){ render(); toast("写真の保存方法を切り替えました"); }
+    };
+    if(src) makeThumb(src,finish); else finish(null);
+  });
+}
+function runMigration(){ window._manualMig=1; migratePhotos(); }
+
+/* 分類を廃止する前のデータに残っている「その他」「調味料」などを取り除く */
+const OLDCATS=["野菜・大豆製品","調味料","その他","魚","肉","卵"];
+function tidyIng(x){
+  let n=String(x.n||"").trim(), amt=String(x.amt||"").trim();
+  for(const c of OLDCATS){
+    if(amt===c){ amt=""; break; }
+    if(amt.endsWith(c)){ amt=amt.slice(0,-c.length).trim(); break; }
+  }
+  // 「パルメザンチーズ 適量 調味料」のように名前へ混ざった場合
+  if(!amt&&/\s/.test(n)){
+    const parts=n.split(/\s+/);
+    if(OLDCATS.includes(parts[parts.length-1])){
+      parts.pop();
+      if(parts.length>1){ amt=parts.pop(); }
+      n=parts.join(" ");
+    }
+  }
+  return {n,amt};
+}
+function tidyAll(){
+  let fixed=0;
+  Object.entries(S.recipes||{}).forEach(([id,r])=>{
+    if(!r.ing||!r.ing.length)return;
+    const before=JSON.stringify(r.ing);
+    const after=r.ing.map(tidyIng);
+    if(JSON.stringify(after)!==before){
+      saveQuiet(["recipes",id],Object.assign({},r,{ing:after})); fixed++;
+    }
+  });
+  return fixed;
+}
+/* ---------- バックアップ ---------- */
+async function allPhotos(){
+  if(!DB) return S.photos||{};
+  const sn=await DB.ref("photos").once("value");
+  return sn.val()||{};
+}
+async function exportData(withPhotos){
+  const btn=$("expBtn"); if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> 書き出しています'}
+  try{
+    const data={ version:1, at:new Date().toISOString(),
+      meals:S.meals||{}, recipes:S.recipes||{}, shopping:S.shopping||{}, settings:S.settings||{} };
+    if(withPhotos) data.photos=await allPhotos();
+    const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`kondate-backup-${key(today)}${withPhotos?"":"-写真なし"}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast("書き出しました");
+  }catch(e){ toast("書き出せませんでした: "+e.message); }
+  if(btn){btn.disabled=false;btn.textContent="写真ごと書き出す"}
+}
+function importData(ev){
+  const f=ev.target.files&&ev.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let d=null;
+    try{ d=JSON.parse(rd.result); }catch(e){ toast("読み取れないファイルです"); return; }
+    if(!d||!d.recipes&&!d.meals){ toast("献立帳のバックアップではないようです"); return; }
+    const n=Object.keys(d.recipes||{}).length, m=Object.keys(d.meals||{}).length;
+    if(!confirm(`レシピ${n}品・献立${m}日ぶんを読み込みます。\n\n今のデータはすべて置き換わります。よろしいですか？`))return;
+    if(!confirm("もう一度確認します。\n現在のデータは元に戻せません。本当に置き換えますか？"))return;
+    ["meals","recipes","shopping","settings"].forEach(k=>{ if(d[k]) saveQuiet([k],d[k]); });
+    if(d.photos){
+      PH={}; PHLOAD={};
+      if(DB) DB.ref("photos").set(d.photos).catch(()=>toast("写真を戻せませんでした"));
+      else { S.photos=d.photos; persist(); }
+    }
+    render(); toast("読み込みました");
+  };
+  rd.readAsText(f);
+}
+function openBackup(){
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>バックアップ</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="note">献立・レシピ帳・写真をファイルに書き出して残せます。
+      iPhoneなら「ファイル」アプリに保存できます。</div>
+    <h2 class="sec">書き出す</h2>
+    <button class="btn wide" id="expBtn" onclick="exportData(true)">写真ごと書き出す</button>
+    <button class="btn wide quiet" style="margin-top:8px" onclick="exportData(false)">写真なしで書き出す（軽い）</button>
+    <div class="note" style="margin-top:8px">写真ごとだと時間がかかり、ファイルも大きくなります。
+      月に一度くらい写真ごと、ふだんは写真なしで十分です。</div>
+    ${pendingMigration().length?`<h2 class="sec">写真の保存方法</h2>
+      <div class="note">起動を軽くするため、写真をレシピの外に移す方式に変わりました。
+        まだ切り替わっていないレシピが${pendingMigration().length}件あります。</div>
+      <button class="btn wide" style="margin-top:10px" onclick="runMigration()">いま切り替える</button>`:""}
+    <h2 class="sec">読み込む</h2>
+    <label class="btn wide ghost">バックアップから戻す
+      <input type="file" accept="application/json,.json" style="display:none" onchange="importData(event)"></label>
+    <div class="warn-note note" style="margin-top:8px;color:var(--danger)">
+      読み込むと今のデータはすべて置き換わります。確認は2回出ます。</div>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+
+/* ---------- 印刷・PDF ---------- */
+#printArea{display:none}
+@media print{
+  @page{size:A4;margin:11mm 13mm}
+  body{background:#fff;padding:0;font-size:10pt}
+  body>*{display:none !important}
+  body>#printArea{display:block !important}
+  .pg{page-break-after:always;page-break-inside:avoid}
+  .pg:last-child{page-break-after:auto}
+  .pTitle{font-family:var(--mincho);font-size:17pt;font-weight:400;color:#16324F;
+    border-bottom:1.2pt solid #16324F;padding-bottom:2mm;margin-bottom:3mm;line-height:1.35}
+  .pMeta{font-size:8.5pt;color:#666;margin-bottom:3mm}
+  .pHead{display:flex;gap:5mm;align-items:flex-start;margin-bottom:3mm}
+  .pHead .info{flex:1;min-width:0}
+  .pPhoto{width:46mm;height:33mm;object-fit:cover;border-radius:2mm;flex:none}
+  .pSec{font-family:var(--mincho);font-size:12pt;color:#16324F;margin:4mm 0 1.5mm;
+    border-left:2mm solid #D8A62E;padding-left:2.5mm}
+  .pIngCols{display:flex;gap:7mm;align-items:flex-start}
+  .pIngCols table{flex:1;min-width:0}
+  .pIng{width:100%;border-collapse:collapse;font-size:10pt}
+  .pIng td{padding:1mm 0;border-bottom:1px dotted #bbb;vertical-align:bottom}
+  .pIng td.a{text-align:right;white-space:nowrap;padding-left:4mm}
+  .pStep{display:flex;gap:2.5mm;margin-bottom:1.8mm;font-size:10pt;line-height:1.6}
+  .pStep b{flex:none;width:5.5mm;height:5.5mm;border-radius:50%;background:#16324F;color:#fff;
+    font-size:7.5pt;text-align:center;line-height:5.5mm;font-weight:400}
+  .pTip{background:#F7F3E8;padding:2.5mm 3.5mm;font-size:9.5pt;line-height:1.6;border-radius:2mm}
+  .pFoot{margin-top:3.5mm;padding-top:1.5mm;border-top:1px solid #ddd;font-size:7.5pt;color:#888;
+    display:flex;justify-content:space-between}
+  .pCover{text-align:center;padding-top:60mm}
+  .pCover h1{font-family:var(--mincho);font-size:34pt;font-weight:400;letter-spacing:.3em;color:#16324F}
+  .pCover .sub{margin-top:8mm;font-size:11pt;color:#666;line-height:2}
+  .pIndex{column-count:2;column-gap:10mm;font-size:10.5pt;line-height:2}
+  .clear{clear:both}
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>献立帳</h1>
+  <p>合い言葉を入れてください</p>
+  <input id="gateIn" type="password" autocomplete="off" placeholder="合い言葉">
+  <div id="gateErr"></div>
+  <button onclick="tryGate()">開く</button>
+</div>
+
+<header class="hidden" id="hd">
+  <div class="row">
+    <button class="navbtn" id="prevBtn" onclick="moveMonth(-1)">‹</button>
+    <button style="flex:1;display:block" onclick="titleTap()"><h1 id="hTitle">献立帳</h1><div id="hSub"></div></button>
+    <button class="navbtn" id="nextBtn" onclick="moveMonth(1)">›</button>
+  </div>
+</header>
+
+<main class="hidden" id="app"></main>
+<div id="pickBar" class="hidden"></div>
+
+<nav class="hidden" id="nav">
+  <button data-tab="plan" onclick="setTab('plan')"><span class="ico">暦</span><span class="nm">献立</span></button>
+  <button data-tab="cook" onclick="setTab('cook')"><span class="ico">厨</span><span class="nm">料理</span></button>
+  <button data-tab="buy"  onclick="setTab('buy')"><span class="ico">籠</span><span class="nm">買い物</span></button>
+  <button data-tab="book" onclick="setTab('book')"><span class="ico">帖</span><span class="nm">レシピ帳</span></button>
+</nav>
+
+<div id="sheet"><div id="sheetBg" onclick="closeSheet()"></div>
+  <button id="sheetClose" onclick="closeSheet()" aria-label="閉じる">×</button>
+  <div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   設定
+   ============================================================ */
+const PASSCODE   = "morishita";
+const WORKER_URL = "https://kondateai.kmorish0619.workers.dev";
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyA4F0Ghm3zHNqbjjTpwPCMI-ISGnHTFtJw",
+  authDomain:"kondate-ai2.firebaseapp.com",
+  databaseURL:"https://kondate-ai2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"kondate-ai2",
+  appId:"1:538385040164:web:43ffa788992ff4f99969b1"
+};
+const PHOTO_MAX = 1200, PHOTO_Q = 0.7;
+const PHOTO_KEEP = 6;   // レシピ1つあたりに残す写真の枚数
+const THUMB_MAX  = 480, THUMB_Q = 0.6;   // 一覧に出す小さい写真
+/* ============================================================ */
+
+const KINDS=[{k:"main",nm:"主菜"},{k:"side",nm:"副菜"}];
+const WD=["日","月","火","水","木","金","土"];
+
+let DB=null, S={meals:{}, recipes:{}, shopping:{}, settings:{adults:2,kids:0}};
+let PH={};          // 開いたレシピの写真だけを入れておく置き場
+let PHLOAD={};      // 読み込み済みかどうか
+const today=new Date();
+let view={y:today.getFullYear(),m:today.getMonth()};
+let cookView={y:today.getFullYear(),m:today.getMonth()};
+let tab="plan", picking=false, picked={}, cookDate=null, lastFill=null, bookQ="", bookSort="at", selDate=null;
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromKey=k=>{const[a,b,c]=k.split("-").map(Number);return new Date(a,b-1,c)};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const kindNm=k=>(KINDS.find(x=>x.k===k)||{}).nm||"";
+const servings=()=>`大人${S.settings.adults}人${S.settings.kids?`・子ども${S.settings.kids}人`:""}`;
+const norm=s=>String(s||"").trim().replace(/\s+/g,"");
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),2200)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+/* ---------- 保存 ---------- */
+function setIn(o,p,v){let x=o;for(let i=0;i<p.length-1;i++){if(typeof x[p[i]]!=="object"||x[p[i]]===null)x[p[i]]={};x=x[p[i]]}
+  if(v===null||v===undefined)delete x[p[p.length-1]];else x[p[p.length-1]]=v}
+function persist(){if(!DB){try{localStorage.setItem("kondate3",JSON.stringify(S))}catch(e){}}}
+function save(p,v){setIn(S,p,v);if(DB)DB.ref(p.join("/")).set(v===undefined?null:v).catch(()=>toast("保存できませんでした"));persist();render()}
+function saveQuiet(p,v){setIn(S,p,v);if(DB)DB.ref(p.join("/")).set(v===undefined?null:v).catch(()=>{});persist()}
+function bootStore(){
+  if(FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.databaseURL&&window.firebase){
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG); DB=firebase.database();
+      // 写真（photos）は重いので、ここでは読み込まない
+      ["meals","recipes","shopping","settings"].forEach(k=>{
+        DB.ref(k).on("value",snap=>{
+          const v=snap.val();
+          S[k]=(k==="settings")?Object.assign({adults:2,kids:0},v||{}):(v||{});
+          render();
+          // レシピが届いてから一度だけ整える（時間で待つと通信が遅いとき空振りするため）
+          if(k==="recipes"&&!window._migrated&&Object.keys(S.recipes).length){
+            window._migrated=1;
+            setTimeout(()=>{ tidyAll(); migratePhotos(); },400);
+          }
+        });
+      });
+      return;
+    }catch(e){console.warn(e)}
+  }
+  try{const r=localStorage.getItem("kondate3");if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+  render();
+}
+
+/* ---------- 鍵 ---------- */
+function tryGate(){if($("gateIn").value.trim()===PASSCODE){try{localStorage.setItem("kondate_ok","1")}catch(e){}openApp()}
+  else{$("gateErr").textContent="合い言葉が違います";$("gateIn").value=""}}
+$("gateIn").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate()});
+function openApp(){$("gate").style.display="none";["hd","app","nav"].forEach(i=>$(i).classList.remove("hidden"));bootStore()}
+(function(){try{if(localStorage.getItem("kondate_ok")==="1"){openApp();return}}catch(e){}$("gateIn").focus()})();
+
+/* ============================================================
+   レシピ帳 — ここが知識の本体
+   献立側は {recipeId, photoId, done} だけを持ち、中身は帳面を見る
+   ============================================================ */
+function dishData(d){
+  if(!d) return null;
+  if(d.recipeId){
+    const r=S.recipes[d.recipeId];
+    if(!r) return {name:"（削除されたレシピ）",missing:true,recipeId:d.recipeId};
+    // その日に撮った写真があればそれを、なければ代表写真を出す
+    const loaded=photosOf(d.recipeId);
+    const own=(d.photoId&&loaded[d.photoId])?loaded[d.photoId].img
+      :((d.photoId&&r.photos&&r.photos[d.photoId])?r.photos[d.photoId].img:null);
+    return Object.assign({},r,{photo:own||coverOf(r),done:!!d.done,recipeId:d.recipeId,photoId:d.photoId});
+  }
+  return Object.assign({},d,{photo:d.photo||d.image||null});
+}
+function findRecipeByName(name){
+  const n=norm(name); if(!n) return null;
+  for(const id in S.recipes) if(norm(S.recipes[id].name)===n) return id;
+  return null;
+}
+function recipeFields(o){
+  return { name:String(o.name||""),
+    ing:(o.ing||[]).map(x=>({n:String(x.n||""),amt:String(x.amt||"")})).filter(x=>x.n),
+    steps:(o.steps&&o.steps.length)?o.steps.map(String):null,
+    tips:o.tips?String(o.tips):null, url:o.url?String(o.url):null,
+    image:o.image?String(o.image):null, source:o.source?String(o.source):null,
+    time:Number(o.time)||null };
+}
+/* 献立の1品を帳面に登録する。写真があればそれを1枚目の履歴にする */
+function registerRecipe(k,kk){
+  const raw=(S.meals[k]||{})[kk]; const d=dishData(raw);
+  if(!d||d.recipeId){ toast("もう帳面にあります"); return; }
+  const dup=findRecipeByName(d.name);
+  if(dup){
+    save(["meals",k,kk],{recipeId:dup,done:!!d.done});
+    toast("同じ名前が帳面にあったので繋げました"); refreshDay(k); return;
+  }
+  const id=uid(); const rec=recipeFields(d); rec.at=Date.now();
+  let photoId=null;
+  if(d.photo){ photoId=uid(); savePhoto(id,photoId,{img:d.photo,date:k});
+    rec.photoMeta={[photoId]:{date:k}}; rec.cover=photoId;
+    makeThumb(d.photo,t=>{ if(t) saveQuiet(["recipes",id],Object.assign({},S.recipes[id]||rec,{thumb:t})) }); }
+  saveQuiet(["recipes",id],rec);
+  save(["meals",k,kk], photoId?{recipeId:id,photoId,done:true}:{recipeId:id,done:!!d.done});
+  toast("帳面に入れました"); refreshDay(k);
+}
+
+/* ---------- 画面切替 ---------- */
+function setTab(t){tab=t;picking=false;picked={};closeSheet();render();window.scrollTo(0,0)}
+function moveMonth(d){
+  if(tab==="cook"){
+    const n=new Date(cookView.y,cookView.m+d,1);
+    cookView={y:n.getFullYear(),m:n.getMonth()};
+    cookDate=key(clampToMonth(cookView)); render(); return;
+  }
+  const n=new Date(view.y,view.m+d,1); view={y:n.getFullYear(),m:n.getMonth()}; render();
+}
+/* その月のどの日を開くか。今月なら今日、それ以外は1日 */
+function clampToMonth(v){
+  return (v.y===today.getFullYear()&&v.m===today.getMonth())
+    ? today : new Date(v.y,v.m,1);
+}
+function titleTap(){ if(tab==="plan"||tab==="cook") openMonthPicker(); }
+function backToday(){
+  if(tab==="cook"){
+    cookView={y:today.getFullYear(),m:today.getMonth()}; cookDate=key(today);
+  }else{
+    view={y:today.getFullYear(),m:today.getMonth()}; selDate=key(today);
+  }
+  closeSheet(); render();
+}
+function pickMonth(y,m){
+  if(tab==="cook"){ cookView={y,m}; cookDate=key(clampToMonth(cookView)); }
+  else view={y,m};
+  closeSheet(); render();
+}
+function openMonthPicker(){
+  const cv=(tab==="cook")?cookView:view, y=cv.y;
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>いつの月を見る？</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button class="mini line" onclick="pickYear(${y-1})">‹ ${y-1}年</button>
+      <b style="font-family:var(--mincho);font-size:20px">${y}年</b>
+      <button class="mini line" onclick="pickYear(${y+1})">${y+1}年 ›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      ${Array.from({length:12},(_,i)=>`<button class="btn ${(y===cv.y&&i===cv.m)?"":"quiet"}"
+        style="padding:14px 0" onclick="pickMonth(${y},${i})">${i+1}月</button>`).join("")}
+    </div>
+    <button class="btn wide ghost" style="margin-top:14px" onclick="backToday()">今日にもどる</button>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+function pickYear(y){ if(tab==="cook")cookView.y=y; else view.y=y; openMonthPicker(); }
+function render(){
+  document.documentElement.style.setProperty("--hh",$("hd").offsetHeight+"px");
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+  const mon=(tab==="plan"||tab==="cook");
+  $("prevBtn").style.visibility=mon?"visible":"hidden";
+  $("nextBtn").style.visibility=mon?"visible":"hidden";
+  $("pickBar").classList.toggle("hidden",!picking);
+  if(tab==="plan"){$("hTitle").textContent=`${view.y}年 ${view.m+1}月 ▾`;
+    $("hSub").textContent=picking?"献立をたてる日をえらぶ":`${countMonth()}品ぶん`;renderPlan()}
+  if(tab==="cook"){$("hTitle").textContent=`${cookView.y}年 ${cookView.m+1}月 ▾`;
+    $("hSub").textContent=servings();renderCook()}
+  if(tab==="buy"){$("hTitle").textContent="買い物リスト";
+    const L=S.shopping&&S.shopping.list;
+    $("hSub").textContent=L?`${L.from.slice(5).replace("-","/")}〜${L.to.slice(5).replace("-","/")} のぶん`:"まだリストがありません";
+    renderBuy()}
+  if(tab==="book"){$("hTitle").textContent="レシピ帳";
+    $("hSub").textContent=`${Object.keys(S.recipes).length}品たまっています`;renderBook()}
+}
+function countMonth(){let n=0;for(const k in S.meals){const d=fromKey(k);
+  if(d.getFullYear()===view.y&&d.getMonth()===view.m)KINDS.forEach(x=>{const dd=dishData(S.meals[k][x.k]);if(dd&&dd.name)n++})}return n}
+
+/* ---------- 献立タブ ---------- */
+function renderPlan(){
+  const first=new Date(view.y,view.m,1), start=addDays(first,-first.getDay());
+  let cells="";
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i), k=key(d), day=S.meals[k]||{}, out=d.getMonth()!==view.m, wd=d.getDay();
+    let dots="",photo="";
+    KINDS.forEach(x=>{const dd=dishData(day[x.k]);if(dd&&dd.name){dots+=`<span class="dot ${x.k}"></span>`;if(dd.photo&&!photo)photo=dd.photo}});
+    cells+=`<button class="cell ${out?"out":""} ${k===key(today)?"today":""} ${wd===0?"sun":""} ${wd===6?"sat":""} ${picked[k]?"pick":""} ${(!picking&&k===selDate)?"sel":""}"
+      onclick="cellTap('${k}')"><span class="dnum">${d.getDate()}</span><span class="dots">${dots}</span>
+      ${photo?`<img class="thumb" src="${photo}" alt="">`:""}${picked[k]?`<span class="check">✓</span>`:""}</button>`;
+  }
+  const bar=lastFill?`<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+      <div style="flex:1;font-size:13px">AIが${lastFill.n}品たてました${lastFill.reused?`（うち${lastFill.reused}品は帳面から）`:""}</div>
+      <button class="mini" onclick="undoFill()">取り消す</button>
+      <button class="mini" onclick="lastFill=null;render()">閉じる</button></div>`:"";
+  const away=(view.y!==today.getFullYear()||view.m!==today.getMonth());
+  $("app").innerHTML=`
+    ${!picking&&WORKER_URL?`<button class="btn wide" style="margin-bottom:10px" onclick="startPick()">日にちをえらんで献立をたてる</button>`:""}
+    ${(!picking&&away)?`<div style="text-align:center;margin-bottom:8px">
+      <button class="mini gold" onclick="backToday()">今日にもどる</button></div>`:""}
+    ${picking?`<div class="note" style="margin-bottom:9px">必要な日数だけタップ。えらんだ日の空いている枠だけ埋まります。</div>`:""}
+    ${bar}
+    <div class="week">${WD.map((w,i)=>`<div class="${i===0?"sun":i===6?"sat":""}">${w}</div>`).join("")}</div>
+    <div class="grid">${cells}</div>
+    ${(!picking&&selDate)?dayPanel(selDate):`<div class="note" style="text-align:center;margin-top:16px">日付をタップすると、その日の献立が下に出ます</div>`}
+    ${picking?"":helpLink()}`;
+  if(picking){const n=Object.keys(picked).length;
+    $("pickBar").innerHTML=`<button class="btn quiet" onclick="picking=false;picked={};render()">やめる</button>
+      <button class="btn" id="genBtn" ${n?"":"disabled"} onclick="generate()">${n}日ぶんの献立をたてる</button>`}
+}
+/* カレンダーの下に出る、その日の献立 */
+function dayPanel(k){
+  const d=fromKey(k), day=S.meals[k]||{};
+  const rows=KINDS.map(x=>{
+    const dd=dishData(day[x.k]);
+    if(!dd||!dd.name) return `<div class="prow">
+      <span class="pk ${x.k}">${x.nm}</span>
+      <button class="padd" onclick="addDish('${k}','${x.k}')">＋ 追加する</button></div>`;
+    return `<div class="prow">
+      <span class="pk ${x.k}">${x.nm}</span>
+      <button class="pnm" onclick="openRecipe('${k}','${x.k}')">${esc(dd.name)}${dd.done?" ✓":""}</button>
+      ${WORKER_URL?`<button class="mini line" onclick="swapDish('${k}','${x.k}')">変更</button>`:""}
+      <button class="mini line" style="color:var(--danger)" onclick="rmDish('${k}','${x.k}')">外す</button></div>`;
+  }).join("");
+  return `<div class="card" style="margin-top:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <b style="font-family:var(--mincho);font-size:17px;font-weight:400">${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）</b>
+      <button class="mini line" onclick="selDate=null;render()">閉じる</button>
+    </div>
+    <input class="field" style="margin-bottom:10px" placeholder="（例：鍋の日、カレーの日など）"
+      value="${esc(day.label||"")}" onchange="saveLabel('${k}',this.value)">
+    ${rows}
+    <button class="btn wide quiet" style="margin-top:10px" onclick="cookDate='${k}';setTab('cook')">この日の料理を見る</button>
+  </div>`;
+}
+function startPick(){picking=true;picked={};lastFill=null;render()}
+function cellTap(k){
+  if(picking){if(picked[k])delete picked[k];else picked[k]=true;render();return}
+  selDate=(selDate===k)?null:k; render();
+}
+
+/* ---------- AI ---------- */
+/* ---------- 楽天レシピAPI ---------- */
+let RCATS=null;          // カテゴリ一覧（取得後キャッシュ）
+async function rakuten(path,params){
+  const r=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({mode:"rakuten",path,params:params||{}})});
+  let d=null;
+  try{ d=await r.json(); }catch(e){}
+  if(d&&d.error) throw new Error(d.error);
+  if(!r.ok) throw new Error("楽天レシピの取得に失敗しました（"+r.status+"）");
+  return d||{};
+}
+async function rakutenCats(){
+  if(RCATS) return RCATS;
+  // カテゴリは大・中・小をそれぞれ取得する（まとめて取ることはできない）
+  const [L,M,SM]=await Promise.all([
+    rakuten("CategoryList",{categoryType:"large"}),
+    rakuten("CategoryList",{categoryType:"medium"}).catch(()=>null),
+    rakuten("CategoryList",{categoryType:"small"}).catch(()=>null)
+  ]);
+  const out=[], midFull={};
+  (((L&&L.result&&L.result.large))||[]).forEach(c=>
+    out.push({id:String(c.categoryId),name:c.categoryName,level:1}));
+  (((M&&M.result&&M.result.medium))||[]).forEach(c=>{
+    const full=`${c.parentCategoryId}-${c.categoryId}`;
+    midFull[String(c.categoryId)]=full;
+    out.push({id:full,name:c.categoryName,level:2});
+  });
+  (((SM&&SM.result&&SM.result.small))||[]).forEach(c=>{
+    const parent=midFull[String(c.parentCategoryId)];
+    if(parent) out.push({id:`${parent}-${c.categoryId}`,name:c.categoryName,level:3});
+  });
+  RCATS=out;
+  return RCATS;
+}
+function rakutenToDish(x){
+  return { name:String(x.recipeTitle||"").trim(),
+    ing:(x.recipeMaterial||[]).map(m=>({n:String(m),amt:""})).filter(z=>z.n),
+    time:parseInt(String(x.recipeIndication||"").replace(/[^0-9]/g,""))||null,
+    steps:null, tips:null,
+    url:x.recipeUrl||null, image:x.foodImageUrl||x.mediumImageUrl||null, source:"rakuten" };
+}
+async function rakutenRanking(categoryId){
+  const d=await rakuten("CategoryRanking",{categoryId});
+  return ((d.result)||[]).map(rakutenToDish).filter(x=>x.name);
+}
+/* 献立づくりの参考にする候補をいくつかのカテゴリから集める */
+async function inspirationPool(n){
+  try{
+    const cats=await rakutenCats();
+    if(!cats.length) return [];
+    // 中・小カテゴリは料理が具体的なので、そちらを優先してランダムに選ぶ
+    const deep=cats.filter(c=>c.level>=2);
+    const src=deep.length>8?deep:cats;
+    const pick=[...src].sort(()=>Math.random()-0.5).slice(0,n||8);
+    const lists=await Promise.all(pick.map(c=>rakutenRanking(c.id).catch(()=>[])));
+    const all=[].concat(...lists);
+    const seen={}, out=[];
+    all.forEach(x=>{const k=norm(x.name); if(k&&!seen[k]){seen[k]=1;out.push(x)}});
+    return out;
+  }catch(e){ return []; }
+}
+
+async function askAI(prompt,system,maxTokens){
+  if(!WORKER_URL) throw new Error("WORKER_URLが未設定です");
+  const r=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-5",max_tokens:maxTokens||2000,system:system||"",messages:[{role:"user",content:prompt}]})});
+  if(!r.ok) throw new Error("AIの呼び出しに失敗しました（"+r.status+"）");
+  const d=await r.json();
+  return (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+function parseJSON(t){
+  const s=t.replace(/```json|```/g,"").trim();
+  const a=s.indexOf("{"),b=s.indexOf("[");
+  const i=(a<0)?b:(b<0)?a:Math.min(a,b);
+  const body=i>0?s.slice(i):s;
+  try{ return JSON.parse(body); }catch(e){}
+  // 応答が途中で切れた場合、読める範囲だけ拾う
+  if(body.trim()[0]==="["){
+    const out=[];
+    const re=/\{[^{}]*\}/g; let m;
+    while((m=re.exec(body))){ try{ out.push(JSON.parse(m[0])) }catch(e2){} }
+    if(out.length) return out;
+  }
+  const peek=body.replace(/\s+/g," ").slice(0,90);
+  throw new Error("提案を読み取れませんでした: "+(peek||"応答が空でした"));
+}
+const CHEF="あなたは日本の家庭料理に詳しい献立プランナーです。平日に無理なく作れる現実的な料理を選びます。";
+
+/* AIの提案を献立に入れる。同じ名前が帳面にあれば、AIの中身は捨てて帳面を使う */
+let RPOOL=[];   // 直近に取得した楽天レシピの候補
+/* AIからは料理名だけを受け取り、中身は「レシピ帳」か「楽天の候補」から引く */
+function adopt(o){
+  const obj=(typeof o==="string")?{name:o}:(o||{});
+  if(!obj.name) return null;
+  const id=findRecipeByName(obj.name);
+  if(id) return {dish:{recipeId:id}, reused:true, fromBook:true};
+  const hit=RPOOL.find(x=>norm(x.name)===norm(obj.name));
+  if(hit){
+    const r=recipeFields(hit);
+    return {dish:r, reused:false, fromPool:true};
+  }
+  return {dish:recipeFields(obj), reused:false};
+}
+async function generate(){
+  const dates=Object.keys(picked).sort();
+  const targets=dates.map(k=>{const day=S.meals[k]||{};
+    return {k, need:KINDS.filter(x=>{const dd=dishData(day[x.k]);return !(dd&&dd.name)}).map(x=>x.k)}
+  }).filter(t=>t.need.length);
+  if(!targets.length){toast("えらんだ日はもう埋まっています");return}
+
+  const b=$("genBtn"); b.disabled=true;
+  const prev={}; let n=0, reused=0, failed=0;
+  try{
+    RPOOL=await inspirationPool(14);
+    // 一度に頼む量が多いと応答が途中で切れるので、3日ずつに分けて頼む
+    const chunks=[];
+    for(let i=0;i<targets.length;i+=3) chunks.push(targets.slice(i,i+3));
+    for(let ci=0;ci<chunks.length;ci++){
+      b.innerHTML=`<span class="spin"></span> 考えています（${ci+1}／${chunks.length}）`;
+      try{
+        const part=await askPlan(chunks[ci], n);
+        part.forEach(p=>{
+          const t=chunks[ci].find(x=>x.k===p.date); if(!t)return;
+          if(!(p.date in prev)) prev[p.date]=S.meals[p.date]?JSON.parse(JSON.stringify(S.meals[p.date])):null;
+          const day=JSON.parse(JSON.stringify(S.meals[p.date]||{}));
+          t.need.forEach(kk=>{const a=adopt(p[kk]); if(!a)return;
+            day[kk]=a.dish; n++; if(a.reused||a.fromPool)reused++;});
+          saveQuiet(["meals",p.date],day);
+        });
+      }catch(e){ failed++; console.warn(e); if(chunks.length===1) throw e; }
+    }
+    lastFill=n?{n,reused,prev}:null; picking=false; picked={}; render();
+    toast(n? (failed?`${n}品たてました（一部できませんでした）`:`${n}品たてました`) : "提案を受け取れませんでした");
+  }catch(e){
+    toast(e.message);
+    const bb=$("genBtn"); if(bb){bb.disabled=false;bb.textContent="献立をたてる"}
+  }
+}
+/* 数日ぶんの献立をAIに頼む。返ってくるのは料理名だけ */
+async function askPlan(group, already){
+  const book=Object.values(S.recipes).map(r=>r.name);
+  const seen=seenNames(40);
+  const list=group.map(t=>{const d=fromKey(t.k);
+    return `${t.k}(${WD[d.getDay()]}): ${t.need.map(kindNm).join("・")}`}).join("\n");
+  const txt=await askAI(
+`次の日付の献立を考えてください。指定された枠だけ埋め、それ以外は含めないこと。
+
+${list}
+
+条件:
+- ${servings()}ぶん
+- 主菜はメインのおかず、副菜は野菜中心の小鉢（主食は白ごはんなので考えなくてよい）
+- ${season()}の旬の食材を活かす
+- 味つけと調理法を散らす（${shuffle(["和食","洋食","中華","韓国風","エスニック"]).slice(0,3).join("・")}などを混ぜ、${shuffle(["焼く","煮る","蒸す","炒める","揚げる","和える"]).slice(0,3).join("・")}が偏らないように）
+- 食材を数日で使い回して買い物を減らす
+- 定番すぎる顔ぶれにしない
+${seen.length?`- 過去に出した「${seen.join("、")}」とは違う料理にする`:""}
+${RPOOL.length?`\n【料理はこの候補の中からえらんでください】実際に人気のあるレシピです。料理名は一字一句そのまま書き写すこと。
+どうしても合うものが無いときだけ、自分で考えてかまいません。
+
+候補:
+${shuffle(RPOOL).slice(0,40).map(x=>"・"+x.name).join("\n")}`:""}
+
+出力はJSONのみ。料理名だけを書き、材料や手順は書かないでください。
+[{"date":"YYYY-MM-DD","main":"料理名","side":"料理名"}]`, CHEF, 1000);
+  const v=parseJSON(txt);
+  return Array.isArray(v)?v:[v];
+}
+const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
+function season(){
+  const m=today.getMonth()+1;
+  return m<=2||m===12?"冬":m<=5?"春":m<=8?"夏":"秋";
+}
+/* 過去に献立へ出した料理名。同じ顔ぶれを避けるために使う */
+function seenNames(limit){
+  const out=[];
+  Object.keys(S.meals).sort().reverse().forEach(k=>{
+    KINDS.forEach(x=>{const d=dishData(S.meals[k][x.k]);
+      if(d&&d.name&&out.length<limit&&!out.includes(d.name))out.push(d.name)})
+  });
+  Object.values(S.recipes).forEach(r=>{if(r.name&&out.length<limit&&!out.includes(r.name))out.push(r.name)});
+  return out;
+}
+function recentNames(limit){
+  const out=[];
+  Object.keys(S.meals).sort().reverse().forEach(k=>{
+    if(fromKey(k)>today) return;
+    KINDS.forEach(x=>{const d=dishData(S.meals[k][x.k]); if(d&&d.name&&d.done&&out.length<limit&&!out.includes(d.name))out.push(d.name)})
+  });
+  return out;
+}
+function undoFill(){
+  if(!lastFill)return;
+  Object.entries(lastFill.prev).forEach(([k,v])=>saveQuiet(["meals",k],v));
+  lastFill=null; render(); toast("元に戻しました");
+}
+
+/* ---------- 1日のシート ---------- */
+function sheetTop(){const w=$("sheetBody").querySelector(".sheetScroll");if(w)w.scrollTop=0;$("sheetBody").scrollTop=0}
+function closeSheet(){$("sheet").classList.remove("on")}
+/* シートの中身が差し替わるたびに、見出しを固定して残りをスクロール領域にまとめる */
+(function(){
+  const box=$("sheetBody");
+  const mo=new MutationObserver(()=>{
+    const head=box.querySelector(":scope > .sheetHead");
+    if(!head) return;
+    const rest=[...box.children].filter(el=>el!==head);
+    if(rest.length===1&&rest[0].classList.contains("sheetScroll")) return;
+    mo.disconnect();
+    const wrap=document.createElement("div");
+    wrap.className="sheetScroll";
+    rest.forEach(el=>wrap.appendChild(el));
+    box.appendChild(wrap);
+    mo.observe(box,{childList:true});
+  });
+  mo.observe(box,{childList:true});
+})();
+function dishCard(k,kk,raw){
+  const d=dishData(raw);
+  if(!d||!d.name) return `<button class="slotAdd" style="width:100%" onclick="addDish('${k}','${kk}')">＋ ${kindNm(kk)}を追加</button>`;
+  const meta=[d.time?`${d.time}分`:"",d.done?"作った":""].filter(Boolean).join("・");
+  return `<div class="dish">
+    <button class="tapzone" onclick="openRecipe('${k}','${kk}')">
+      <div class="pic">${d.photo?`<img src="${d.photo}" alt="${esc(d.name)}">`:"写真はまだ"}
+        <span class="kind ${kk}">${kindNm(kk)}</span>
+        ${d.recipeId?`<span class="bookmark">帳面</span>`:""}</div>
+      <div class="body" style="padding-bottom:8px">
+        <div class="nm">${esc(d.name)}</div>
+        <div class="meta">${esc(meta||"　")}</div>
+      </div>
+    </button>
+    <button class="seeRecipe" onclick="openRecipe('${k}','${kk}')">
+      <span>材料とつくり方を見る<span class="sub">　タップで開く</span></span><span>›</span></button>
+    <div class="body" style="padding-top:10px">
+      <div class="acts">
+        ${d.recipeId?"":`<button class="mini gold" onclick="registerRecipe('${k}','${kk}')">帳面に入れる</button>`}
+        ${WORKER_URL?`<button class="mini line" onclick="swapDish('${k}','${kk}')">変更する</button>`:""}
+        <label class="mini line">${d.photo?"写真を撮り直す":"作った・写真"}
+          <input type="file" accept="image/*" style="display:none" onchange="pickPhoto(event,'${k}','${kk}')"></label>
+        <button class="mini line" style="color:var(--danger)" onclick="rmDish('${k}','${kk}')">献立から外す</button>
+      </div>
+    </div></div>`;
+}
+function refreshDay(k){render()}
+function saveLabel(k,v){const day=Object.assign({},S.meals[k]||{});if(v.trim())day.label=v.trim();else delete day.label;save(["meals",k],day)}
+function rmDish(k,kk){
+  const d=dishData((S.meals[k]||{})[kk]);
+  const nm=d&&d.name?`「${d.name}」`:kindNm(kk);
+  const note=(d&&d.recipeId)?"レシピ帳には残るので、あとからまた選べます。"
+    :"この料理のメモ（材料・手順・写真）も一緒に消えます。";
+  if(!confirm(`${nm}を${fromKey(k).getMonth()+1}月${fromKey(k).getDate()}日の献立から外しますか？\n${note}`))return;
+  const day=JSON.parse(JSON.stringify(S.meals[k]||{})); delete day[kk];
+  save(["meals",k],Object.keys(day).length?day:null); refreshDay(k);
+}
+function putDish(k,kk,dish){
+  const day=JSON.parse(JSON.stringify(S.meals[k]||{})); day[kk]=dish;
+  save(["meals",k],day); refreshDay(k);
+}
+function addDish(k,kk){
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>${kindNm(kk)}を追加</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    ${WORKER_URL?`<button class="btn wide" style="margin-bottom:8px" onclick="swapDish('${k}','${kk}',true)">AIに提案してもらう</button>`:""}
+    <button class="btn wide ghost" style="margin-bottom:8px" onclick="pickFromBook('${k}','${kk}')">レシピ帳からえらぶ</button>
+    <button class="btn wide quiet" onclick="editDish('${k}','${kk}',true)">自分で入力する</button>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+async function swapDish(k,kk,isNew){
+  const day=S.meals[k]||{}, cur=dishData(day[kk]);
+  if(cur&&cur.name&&!isNew){
+    const note=cur.recipeId?"（レシピ帳の内容は残ります）":"（この料理のメモは消えます）";
+    if(!confirm(`「${cur.name}」を別の料理に変えますか？\n${note}`))return;
+  }
+  const others=KINDS.filter(x=>x.k!==kk).map(x=>{const o=dishData(day[x.k]);return o&&o.name}).filter(Boolean);
+  const recent=seenNames(30);
+  toast("考えています…");
+  try{
+    const pool=await inspirationPool(5); RPOOL=pool;
+    const txt=await askAI(
+`${fromKey(k).getMonth()+1}月${fromKey(k).getDate()}日の${kindNm(kk)}を1品提案してください。
+${servings()}ぶん。${season()}の旬を意識して。${others.length?`同じ日の献立: ${others.join("、")}。重複しない組み合わせに。`:""}
+${cur&&cur.name?`「${cur.name}」以外で。`:""}${recent.length?`過去に出した「${recent.join("、")}」も避ける。`:""}
+定番すぎないものを。${shuffle(["和食","洋食","中華","韓国風","エスニック"])[0]}寄りでもよい。
+${pool.length?`\n【必ずこの候補の中からえらんでください】料理名は一字一句そのまま書き写すこと。
+候補以外の料理を答えてはいけません。
+
+候補:
+${pool.map(x=>"・"+x.name).join("\n")}`:""}
+
+出力はJSONのみ。料理名だけを書いてください: {"name":"料理名"}`, CHEF, 300);
+    const a=adopt(parseJSON(txt));
+    if(!a){toast("提案を受け取れませんでした");return}
+    putDish(k,kk,a.dish);
+    if(a.reused) toast("帳面にあったので、その手順を使います");
+    else if(a.fromPool) toast(isNew?"追加しました":"変更しました");
+    else toast("楽天にない料理なので写真と材料がありません。もう一度押すと別の候補になります");
+  }catch(e){toast(e.message)}
+}
+function chooseFromBook(k,kk,rid){
+  const cur=dishData((S.meals[k]||{})[kk]);
+  if(cur&&cur.name&&!confirm(`「${cur.name}」を「${S.recipes[rid].name}」に差し替えますか？`))return;
+  putDish(k,kk,{recipeId:rid}); closeSheet(); toast("入れました");
+}
+function pickFromBook(k,kk){
+  const list=bookList();
+  if(!list.length){toast("レシピ帳はまだ空です");return}
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>レシピ帳からえらぶ</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="card">${list.map(r=>`<div class="item">
+      <div class="grow"><div class="t">${esc(r.name)}</div>
+      <div class="s">${r.cooked?`${r.cooked}回つくった`:"まだ作っていない"}${r.time?`・${r.time}分`:""}</div></div>
+      <button class="mini" onclick="chooseFromBook('${k}','${kk}','${r.id}')">えらぶ</button>
+      </div>`).join("")}</div>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+
+/* ---------- レシピ詳細・編集 ---------- */
+function openRecipe(k,kk){
+  const d=dishData((S.meals[k]||{})[kk]); if(!d)return;
+  const meta=d.time?`${d.time}分`:"";
+  const r=d.recipeId?S.recipes[d.recipeId]:null;
+  if(r&&!PHLOAD[d.recipeId]) ensurePhotos(d.recipeId,()=>openRecipe(k,kk));
+  const hist=r?photoList(d.recipeId,r).filter(x=>x[1].img):[];
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>${esc(d.name)}</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    ${hist.length?`<div class="photoStrip">${hist.map(([id,p])=>`<figure>
+        <img src="${p.img}" alt=""><figcaption>${esc(p.date.slice(5).replace("-","/"))}</figcaption></figure>`).join("")}</div>`
+      :d.photo?`<img src="${d.photo}" alt="" style="width:100%;border-radius:12px;margin-bottom:10px">`:""}
+    <div class="note">${kindNm(kk)}　${esc(meta)}${d.recipeId?"　／　レシピ帳に登録済み":"　／　まだ帳面に入っていません"}</div>
+    ${d.recipeId?"":`<button class="btn wide" style="margin-top:10px" onclick="registerRecipe('${k}','${kk}')">この料理を帳面に入れる</button>`}
+    <h2 class="sec">材料（${servings()}）</h2>
+    <div class="card">${(d.ing||[]).length?(d.ing||[]).map(x=>`<div class="item">
+      <div class="grow"><div class="t">${esc(x.n)}</div></div><div class="amt">${esc(x.amt)}</div></div>`).join("")
+      :`<div class="note">材料はまだ入っていません</div>`}</div>
+    <h2 class="sec">つくり方</h2>
+    ${d.steps&&d.steps.length?`<div class="card"><ol class="steps">${d.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>`
+      :WORKER_URL?`<button class="btn wide ghost" id="stepBtn" onclick="makeSteps('${k}','${kk}')">${(d.ing||[]).length?"つくり方":"材料とつくり方"}をAIに出してもらう</button>`
+      :`<div class="empty">つくり方はまだありません</div>`}
+    ${d.tips?`<h2 class="sec">つくり方のコツ</h2><div class="card"><div style="font-size:14px">${esc(d.tips)}</div></div>`:""}
+    ${d.url?`<div class="note" style="margin-top:12px"><a href="${esc(d.url)}" target="_blank" rel="noopener">${d.source==="rakuten"?"楽天レシピで元の手順を見る":"参考リンクを開く"}</a></div>`:""}
+    <button class="btn wide quiet" style="margin-top:14px" onclick="editDish('${k}','${kk}')">アレンジ・編集する</button>
+    <button class="btn wide quiet" style="margin-top:8px" onclick="printDish('${k}','${kk}')">印刷・PDFにする</button>
+    ${d.recipeId?`<div class="note" style="margin-top:8px;text-align:center">編集するとレシピ帳が更新され、次に同じ料理が出たときも反映されます</div>`
+      :`<div class="note" style="margin-top:8px;text-align:center">編集すると自動でレシピ帳に登録されます</div>`}`;
+  $("sheetBody").dataset.day="";
+  $("sheet").classList.add("on"); sheetTop();
+}
+async function makeSteps(k,kk){
+  const raw=(S.meals[k]||{})[kk], d=dishData(raw);
+  const b=$("stepBtn"); b.disabled=true; b.innerHTML=`<span class="spin"></span> 考えています`;
+  try{
+    const hasIng=(d.ing||[]).length>0;
+    const txt=await askAI(
+`「${d.name}」を${servings()}ぶん作ります。
+${hasIng?`材料: ${d.ing.map(x=>`${x.n} ${x.amt}`).join("、")}`:"材料も考えてください。"}
+手順は3〜6ステップ、1文ずつ簡潔に。
+出力はJSONのみ: {${hasIng?"":`"ing":[{"n":"鶏もも肉","amt":"200g"}],`}"steps":["…"],"tips":"コツを1〜2文","time":15}`, CHEF, 1400);
+    const o=parseJSON(txt);
+    const upd={steps:(o.steps||[]).map(String), tips:o.tips?String(o.tips):null,
+      time:d.time||Number(o.time)||null};
+    if(!hasIng&&Array.isArray(o.ing)&&o.ing.length)
+      upd.ing=o.ing.map(x=>({n:String(x.n||""),amt:String(x.amt||"")})).filter(x=>x.n);
+    if(d.recipeId) saveQuiet(["recipes",d.recipeId],Object.assign({},S.recipes[d.recipeId],upd));
+    else saveQuiet(["meals",k,kk],Object.assign({},raw,upd));
+    openRecipe(k,kk);
+  }catch(e){toast(e.message);b.disabled=false;b.textContent="つくり方をAIに出してもらう"}
+}
+function editDish(k,kk,isNew){
+  const d=isNew?{name:"",ing:[],steps:[]}:Object.assign({ing:[],steps:[]},dishData((S.meals[k]||{})[kk]));
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>${isNew?kindNm(kk)+"を入力":"アレンジ・編集"}</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="lbl">料理名</div><input class="field" id="eN" value="${esc(d.name)}" placeholder="肉じゃが">
+    <div class="lbl" style="margin-top:10px">調理時間（分）</div>
+    <input class="field" id="eT" type="number" inputmode="numeric" value="${d.time||""}" style="width:120px">
+    <div class="lbl" style="margin-top:12px">材料（1行に「名前, 分量」）</div>
+    <textarea class="field tall" id="eI" placeholder="玉ねぎ, 中1/2個">${esc((d.ing||[]).map(x=>`${x.n}, ${x.amt}`).join("\n"))}</textarea>
+    <div class="lbl" style="margin-top:12px">つくり方（1行に1ステップ）</div>
+    <textarea class="field taller" id="eS">${esc((d.steps||[]).join("\n"))}</textarea>
+    <div class="lbl" style="margin-top:12px">コツ</div>
+    <textarea class="field mid" id="eP">${esc(d.tips||"")}</textarea>
+    <div class="lbl" style="margin-top:12px">参考URL</div><input class="field" id="eU" type="url" inputmode="url" value="${esc(d.url||"")}" placeholder="https://...">
+    <button class="btn wide" style="margin-top:14px" onclick="saveDish('${k}','${kk}')">保存してレシピ帳に反映</button>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+function saveDish(k,kk){
+  const name=$("eN").value.trim(); if(!name){toast("料理名を入れてください");return}
+  const raw=(S.meals[k]||{})[kk]||{}, cur=dishData(raw)||{};
+  const o={ name,
+    ing:$("eI").value.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{
+      const p=l.split(/[,、]/).map(x=>x.trim());
+      return {n:p[0],amt:p[1]||""};
+    }).filter(x=>x.n),
+    steps:$("eS").value.split("\n").map(l=>l.trim()).filter(Boolean),
+    tips:$("eP").value.trim(), url:$("eU").value.trim(),
+    time:Number($("eT").value)||null };
+  const f=recipeFields(o);
+  if(cur.recipeId){
+    // 帳面を更新（写真の履歴はそのまま残す）
+    const r=S.recipes[cur.recipeId];
+    saveQuiet(["recipes",cur.recipeId],Object.assign({},r,f));
+    save(["meals",k,kk],raw);
+    toast("レシピ帳を更新しました");
+  }else{
+    // 帳面にない → 自動で登録する
+    const dup=findRecipeByName(name);
+    if(dup){
+      saveQuiet(["recipes",dup],Object.assign({},S.recipes[dup],f));
+      save(["meals",k,kk],{recipeId:dup,done:!!cur.done});
+      toast("同じ名前の帳面を更新しました");
+    }else{
+      const id=uid(); const rec=Object.assign({at:Date.now()},f);
+      let photoId=null;
+      if(cur.photo){ photoId=uid(); savePhoto(id,photoId,{img:cur.photo,date:k});
+        rec.photoMeta={[photoId]:{date:k}}; rec.cover=photoId;
+        makeThumb(cur.photo,t=>{ if(t) saveQuiet(["recipes",id],Object.assign({},S.recipes[id]||rec,{thumb:t})) }); }
+      saveQuiet(["recipes",id],rec);
+      save(["meals",k,kk],photoId?{recipeId:id,photoId,done:true}:{recipeId:id,done:!!cur.done});
+      toast("レシピ帳に登録しました");
+    }
+  }
+  refreshDay(k);
+}
+
+/* ---------- 写真 ---------- */
+function pickPhoto(ev,k,kk){
+  const f=ev.target.files&&ev.target.files[0]; if(!f)return;
+  toast("写真を縮めています…");
+  const img=new Image(), rd=new FileReader();
+  rd.onload=()=>{img.onload=()=>{
+    let w=img.width,h=img.height; const sc=Math.min(1,PHOTO_MAX/Math.max(w,h));
+    w=Math.round(w*sc); h=Math.round(h*sc);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    const data=cv.toDataURL("image/jpeg",PHOTO_Q);
+    const raw=(S.meals[k]||{})[kk]||{};
+    const rid=raw.recipeId;
+    if(rid&&S.recipes[rid]){
+      ensurePhotos(rid,()=>{
+        const r=JSON.parse(JSON.stringify(S.recipes[rid]));
+        const pid=uid();
+        savePhoto(rid,pid,{img:data,date:k});
+        const meta=Object.assign({},r.photoMeta||{}); meta[pid]={date:k};
+        // 枚数を超えたら、代表写真を残して古いものから消す
+        const ids=Object.entries(meta).sort((a,b)=>((a[1].date||"")<(b[1].date||"")?1:-1));
+        if(ids.length>PHOTO_KEEP){
+          ids.filter(([i])=>i!==r.cover).slice(PHOTO_KEEP-(r.cover?1:0))
+            .forEach(([i])=>{delete meta[i]; removePhoto(rid,i)});
+        }
+        r.photoMeta=meta; r.cooked=(r.cooked||0)+((raw.done)?0:1);
+        delete r.photos;
+        if(!r.cover) r.cover=pid;
+        const commit=thumb=>{
+          if(thumb&&r.cover===pid) r.thumb=thumb;
+          saveQuiet(["recipes",rid],r);
+          save(["meals",k,kk],Object.assign({},raw,{photoId:pid,done:true}));
+          refreshDay(k); toast(`約${Math.round(data.length/1400)}KBで保存しました`);
+        };
+        if(r.cover===pid) makeThumb(data,commit); else commit(null);
+      });
+    }else{
+      save(["meals",k,kk],Object.assign({},raw,{photo:data,done:true}));
+      refreshDay(k); toast(`約${Math.round(data.length/1400)}KBで保存しました`);
+    }
+  };img.src=rd.result};
+  rd.readAsDataURL(f);
+}
+
+/* ---------- 料理をするタブ ---------- */
+function shiftCook(n){
+  if(!cookDate)cookDate=key(today);
+  const d=addDays(fromKey(cookDate),n);
+  cookDate=key(d);
+  cookView={y:d.getFullYear(),m:d.getMonth()};   // 月をまたいだら表示月も動かす
+  render();
+}
+/* 料理タブは左右にフリックして日付を移動できる */
+(function(){
+  let x0=null,y0=null;
+  const ok=e=>tab==="cook"&&!$("sheet").classList.contains("on")
+    &&!e.target.closest("nav,.strip,input,select,textarea");
+  document.addEventListener("touchstart",e=>{
+    if(e.touches.length!==1||!ok(e)){x0=null;return}
+    x0=e.touches[0].clientX; y0=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener("touchend",e=>{
+    if(x0===null||tab!=="cook")return;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-x0, dy=t.clientY-y0;
+    x0=null;
+    if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.5)return;  // 縦スクロールと区別する
+    shiftCook(dx<0?1:-1);
+  },{passive:true});
+})();
+function renderCook(){
+  if(!cookDate)cookDate=key(today);
+  // 表示中の日が月とずれていたら、その月に合わせる
+  const cd=fromKey(cookDate);
+  if(cd.getFullYear()!==cookView.y||cd.getMonth()!==cookView.m)
+    cookDate=key(clampToMonth(cookView));
+  const last=new Date(cookView.y,cookView.m+1,0).getDate();
+  const days=[];for(let i=1;i<=last;i++)days.push(new Date(cookView.y,cookView.m,i));
+  const day=S.meals[cookDate]||{};
+  const away=(cookView.y!==today.getFullYear()||cookView.m!==today.getMonth());
+  $("app").innerHTML=`
+    <div class="strip">${days.map(d=>{const k=key(d), has=S.meals[k];
+      return `<button class="${k===cookDate?"on":""}" onclick="cookDate='${k}';render()">
+        <div class="d">${d.getDate()}</div><div class="w">${WD[d.getDay()]}</div>
+        ${has?`<div class="pip"></div>`:""}</button>`}).join("")}</div>
+    <div class="note" style="text-align:center;margin:-2px 0 8px">
+      ← 左右にスワイプで日付を移動 →
+      ${away?`　<button class="mini gold" style="min-height:28px;padding:0 10px" onclick="backToday()">今日</button>`:""}
+    </div>
+    ${day.label?`<div class="card" style="padding:9px 12px;font-size:14px">${esc(day.label)}</div>`:""}
+    ${KINDS.map(x=>dishCard(cookDate,x.k,day[x.k])).join("")}
+    ${helpLink()}`;
+  const on=$("app").querySelector(".strip button.on");
+  if(on) on.scrollIntoView({block:"nearest",inline:"center"});
+}
+
+/* ---------- 写真は必要になったときだけ読む ---------- */
+function photosOf(id){ return PH[id]||{}; }
+function ensurePhotos(id,after){
+  if(PHLOAD[id]){ if(after)after(); return; }
+  if(!DB){ PH[id]=(S.photos&&S.photos[id])||{}; PHLOAD[id]=1; if(after)after(); return; }
+  DB.ref("photos/"+id).once("value").then(sn=>{
+    PH[id]=sn.val()||{}; PHLOAD[id]=1; if(after)after();
+  }).catch(()=>{ PH[id]={}; PHLOAD[id]=1; if(after)after(); });
+}
+function savePhoto(id,pid,obj){
+  PH[id]=PH[id]||{}; PH[id][pid]=obj; PHLOAD[id]=1;
+  if(DB) DB.ref(`photos/${id}/${pid}`).set(obj).catch(()=>toast("写真を保存できませんでした"));
+  else { S.photos=S.photos||{}; S.photos[id]=PH[id]; persist(); }
+}
+function removePhoto(id,pid){
+  if(PH[id]) delete PH[id][pid];
+  if(DB) DB.ref(`photos/${id}/${pid}`).remove().catch(()=>{});
+  else { if(S.photos&&S.photos[id]) delete S.photos[id][pid]; persist(); }
+}
+/* 一覧やカードに出す小さい写真を作る */
+function makeThumb(dataURI,cb){
+  const img=new Image();
+  img.onload=()=>{
+    let w=img.width,h=img.height; const sc=Math.min(1,THUMB_MAX/Math.max(w,h));
+    w=Math.round(w*sc); h=Math.round(h*sc);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    cb(cv.toDataURL("image/jpeg",THUMB_Q));
+  };
+  img.onerror=()=>cb(null);
+  img.src=dataURI;
+}
+/* 旧方式（レシピの中に写真を埋め込む）から新方式へ、一度だけ移す */
+function pendingMigration(){
+  return Object.entries(S.recipes||{}).filter(([id,r])=>r.photos&&Object.keys(r.photos).length);
+}
+function migratePhotos(){
+  const olds=pendingMigration();
+  if(!olds.length){ if(window._manualMig){toast("切り替えは済んでいます");window._manualMig=0} return; }
+  toast(`写真の保存方法を切り替えています（${olds.length}件）`);
+  let done=0;
+  olds.forEach(([id,r])=>{
+    const entries=Object.entries(r.photos);
+    const meta={};
+    entries.forEach(([pid,pobj])=>{
+      if(pobj&&pobj.img) savePhoto(id,pid,{img:pobj.img,date:pobj.date||key(today)});
+      meta[pid]={date:(pobj&&pobj.date)||key(today)};
+    });
+    const coverId=(r.cover&&r.photos[r.cover])?r.cover
+      :entries.sort((a,b)=>((a[1].date||"")<(b[1].date||"")?1:-1))[0][0];
+    const src=r.photos[coverId]&&r.photos[coverId].img;
+    const finish=thumb=>{
+      const nr=Object.assign({},r,{photoMeta:meta,cover:coverId});
+      if(thumb) nr.thumb=thumb;
+      delete nr.photos;
+      saveQuiet(["recipes",id],nr);
+      if(++done===olds.length){ render(); toast("写真の保存方法を切り替えました"); }
+    };
+    if(src) makeThumb(src,finish); else finish(null);
+  });
+}
+function runMigration(){ window._manualMig=1; migratePhotos(); }
+
+/* 分類を廃止する前のデータに残っている「その他」「調味料」などを取り除く */
+const OLDCATS=["野菜・大豆製品","調味料","その他","魚","肉","卵"];
+function tidyIng(x){
+  let n=String(x.n||"").trim(), amt=String(x.amt||"").trim();
+  for(const c of OLDCATS){
+    if(amt===c){ amt=""; break; }
+    if(amt.endsWith(c)){ amt=amt.slice(0,-c.length).trim(); break; }
+  }
+  // 「パルメザンチーズ 適量 調味料」のように名前へ混ざった場合
+  if(!amt&&/\s/.test(n)){
+    const parts=n.split(/\s+/);
+    if(OLDCATS.includes(parts[parts.length-1])){
+      parts.pop();
+      if(parts.length>1){ amt=parts.pop(); }
+      n=parts.join(" ");
+    }
+  }
+  return {n,amt};
+}
+function tidyAll(){
+  let fixed=0;
+  Object.entries(S.recipes||{}).forEach(([id,r])=>{
+    if(!r.ing||!r.ing.length)return;
+    const before=JSON.stringify(r.ing);
+    const after=r.ing.map(tidyIng);
+    if(JSON.stringify(after)!==before){
+      saveQuiet(["recipes",id],Object.assign({},r,{ing:after})); fixed++;
+    }
+  });
+  return fixed;
+}
+/* ---------- バックアップ ---------- */
+async function allPhotos(){
+  if(!DB) return S.photos||{};
+  const sn=await DB.ref("photos").once("value");
+  return sn.val()||{};
+}
+async function exportData(withPhotos){
+  const btn=$("expBtn"); if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> 書き出しています'}
+  try{
+    const data={ version:1, at:new Date().toISOString(),
+      meals:S.meals||{}, recipes:S.recipes||{}, shopping:S.shopping||{}, settings:S.settings||{} };
+    if(withPhotos) data.photos=await allPhotos();
+    const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`kondate-backup-${key(today)}${withPhotos?"":"-写真なし"}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast("書き出しました");
+  }catch(e){ toast("書き出せませんでした: "+e.message); }
+  if(btn){btn.disabled=false;btn.textContent="写真ごと書き出す"}
+}
+function importData(ev){
+  const f=ev.target.files&&ev.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let d=null;
+    try{ d=JSON.parse(rd.result); }catch(e){ toast("読み取れないファイルです"); return; }
+    if(!d||!d.recipes&&!d.meals){ toast("献立帳のバックアップではないようです"); return; }
+    const n=Object.keys(d.recipes||{}).length, m=Object.keys(d.meals||{}).length;
+    if(!confirm(`レシピ${n}品・献立${m}日ぶんを読み込みます。\n\n今のデータはすべて置き換わります。よろしいですか？`))return;
+    if(!confirm("もう一度確認します。\n現在のデータは元に戻せません。本当に置き換えますか？"))return;
+    ["meals","recipes","shopping","settings"].forEach(k=>{ if(d[k]) saveQuiet([k],d[k]); });
+    if(d.photos){
+      PH={}; PHLOAD={};
+      if(DB) DB.ref("photos").set(d.photos).catch(()=>toast("写真を戻せませんでした"));
+      else { S.photos=d.photos; persist(); }
+    }
+    render(); toast("読み込みました");
+  };
+  rd.readAsText(f);
+}
+function openBackup(){
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>バックアップ</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="note">献立・レシピ帳・写真をファイルに書き出して残せます。
+      iPhoneなら「ファイル」アプリに保存できます。</div>
+    <h2 class="sec">書き出す</h2>
+    <button class="btn wide" id="expBtn" onclick="exportData(true)">写真ごと書き出す</button>
+    <button class="btn wide quiet" style="margin-top:8px" onclick="exportData(false)">写真なしで書き出す（軽い）</button>
+    <div class="note" style="margin-top:8px">写真ごとだと時間がかかり、ファイルも大きくなります。
+      月に一度くらい写真ごと、ふだんは写真なしで十分です。</div>
+    ${pendingMigration().length?`<h2 class="sec">写真の保存方法</h2>
+      <div class="note">起動を軽くするため、写真をレシピの外に移す方式に変わりました。
+        まだ切り替わっていないレシピが${pendingMigration().length}件あります。</div>
+      <button class="btn wide" style="margin-top:10px" onclick="runMigration()">いま切り替える</button>`:""}
+    <h2 class="sec">読み込む</h2>
+    <label class="btn wide ghost">バックアップから戻す
+      <input type="file" accept="application/json,.json" style="display:none" onchange="importData(event)"></label>
+    <div class="warn-note note" style="margin-top:8px;color:var(--danger)">
+      読み込むと今のデータはすべて置き換わります。確認は2回出ます。</div>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+
+/* ---------- 印刷・PDF ---------- */
+function pRecipe(r,n,total){
+  const list=r.ing||[];
+  const row=x=>`<tr><td>${esc(x.n)}</td><td class="a">${esc(x.amt||"")}</td></tr>`;
+  // 材料が多いときは表を2つに割って横に並べる（1ページに収めるため）
+  let ing="";
+  if(list.length>8){
+    const half=Math.ceil(list.length/2);
+    ing=`<div class="pIngCols">
+      <table class="pIng">${list.slice(0,half).map(row).join("")}</table>
+      <table class="pIng">${list.slice(half).map(row).join("")}</table></div>`;
+  }else if(list.length){
+    ing=`<table class="pIng">${list.map(row).join("")}</table>`;
+  }
+  const steps=(r.steps||[]).map((t,i)=>`<div class="pStep"><b>${i+1}</b><span>${esc(t)}</span></div>`).join("");
+  const photo=coverOf(r);
+  const meta=[r.time?`調理時間 約${r.time}分`:"",servings(),r.cooked?`${r.cooked}回つくりました`:""].filter(Boolean).join("　／　");
+  return `<div class="pg">
+    <div class="pTitle">${esc(r.name)}</div>
+    <div class="pHead">
+      <div class="info">
+        <div class="pMeta">${esc(meta)}</div>
+        ${ing?`<div class="pSec" style="margin-top:0">材料</div>${ing}`:""}
+      </div>
+      ${photo?`<img class="pPhoto" src="${photo}" alt="">`:""}
+    </div>
+    ${steps?`<div class="pSec">つくり方</div>${steps}`:""}
+    ${r.tips?`<div class="pSec">コツ</div><div class="pTip">${esc(r.tips)}</div>`:""}
+    ${r.url?`<div class="pMeta" style="margin-top:5mm">参考 ${esc(r.url)}</div>`:""}
+    <div class="pFoot"><span>献立帳</span><span>${total>1?`${n} / ${total}`:esc(printDate())}</span></div>
+  </div>`;
+}
+function printDate(){const d=new Date();return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`}
+function doPrint(html){
+  $("printArea").innerHTML=html;
+  setTimeout(()=>window.print(),80);
+}
+function printOne(id){
+  const r=S.recipes[id]; if(!r)return;
+  ensurePhotos(id,()=>doPrint(pRecipe(r,1,1)));
+}
+/* 献立に入っているだけで帳面にない料理も印刷できるように */
+function printDish(k,kk){
+  const d=dishData((S.meals[k]||{})[kk]); if(!d)return;
+  doPrint(pRecipe(d,1,1));
+}
+function printBook(){
+  const list=bookList().filter(r=>{const q=norm(bookQ);return !q||norm(r.name).includes(q)});
+  if(!list.length){toast("印刷するレシピがありません");return}
+  const total=list.length;
+  const cover=`<div class="pg"><div class="pCover">
+      <h1>献立帳</h1>
+      <div class="sub">${total}品${bookQ?`（「${esc(bookQ)}」でしぼりこみ）`:""}<br>${printDate()}</div>
+    </div></div>
+    <div class="pg"><div class="pTitle">もくじ</div>
+      <div class="pIndex">${list.map((r,i)=>`<div>${i+1}. ${esc(r.name)}</div>`).join("")}</div>
+      <div class="pFoot"><span>献立帳</span><span>${printDate()}</span></div></div>`;
+  doPrint(cover+list.map((x,i)=>pRecipe(S.recipes[x.id],i+1,total)).join(""));
+}
+function printHelp(){
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>PDFにするには</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="card" style="font-size:13.5px;line-height:1.9">
+      印刷ボタンを押すとプレビューが出ます。<br><br>
+      <b>iPhone</b><br>
+      プレビュー右上の「共有」から「PDFとして保存」や「ファイルに保存」を選べます。
+      そのままLINEなどにも送れます。<br><br>
+      <b>うまく出ないとき</b><br>
+      ホーム画面のアイコンから開いていると、印刷画面が出ないことがあります。
+      その場合はSafariでこのページを開き直してから試してください。
+    </div>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+
+/* ---------- つかいかた ---------- */
+function helpLink(){
+  return `<div style="text-align:center;margin-top:22px">
+    <button class="mini line" onclick="openHelp()">？ このページのつかいかた</button></div>`;
+}
+const HELP={
+  plan:{t:"献立タブ",b:[
+    ["日にちをえらんで献立をたてる","押すとカレンダーが選択モードになります。必要な日数だけタップして、下のボタンで実行。えらんだ日の空いている枠だけが埋まります。すでに入っている料理は動きません。"],
+    ["日付をタップ","その日の主菜・副菜がカレンダーの下に出ます。料理名を押すと材料とつくり方、「変更」で別の料理に、「外す」で献立から削除。"],
+    ["年月をタップ","上の「2026年9月 ▾」を押すと、年と月を選べます。ずっと前の月にも一度で移動できます。"],
+    ["取り消し","AIがたてた直後なら「取り消す」でまとめて元に戻せます。"]
+  ]},
+  cook:{t:"料理タブ",b:[
+    ["日付の移動","上の帯をタップするか、画面を左右にスワイプ。月をまたぐと表示月も変わります。ヘッダの ‹ › や年月タップでも移動できます。"],
+    ["点の印","日付の下の小さな点は、その日に献立が入っている印です。"],
+    ["材料とつくり方を見る","写真や料理名を押しても開きます。つくり方が空なら、AIに出してもらうボタンが出ます。"],
+    ["作った・写真","料理の写真を撮ると「作った」状態になり、買い物リストの対象から外れます。帳面に入っている料理なら、写真はレシピ帳にも溜まります。"]
+  ]},
+  buy:{t:"買い物タブ",b:[
+    ["リストを作る","買い物に行くときに、何日ぶん買うかを選んでリストを作ります。その時点の献立から材料を写し取るので、あとで献立を変えてもリストは崩れません。"],
+    ["チェック","買ったものにチェック。このリストの中だけの話なので、翌日に持ち越したり他の日に影響したりしません。"],
+    ["並び順と共有","まだ買っていないものが上に来ます。「共有」でLINEなどに送れます（チェック済みは除かれます）。"],
+    ["買い物おわり","リストを閉じます。次に行くときにまた作ります。"]
+  ]},
+  book:{t:"レシピ帳タブ",b:[
+    ["これは何？","気に入った料理を貯めておく場所です。ここに入れた料理は、次に同じ名前が出てきたときに同じ材料・手順が使われます。編集すればその内容が残り続けます。"],
+    ["帳面に入れる","献立の料理カードにある金色のボタンから入れます。入っていない料理を編集すると、自動で入ります。"],
+    ["人気レシピをさがす","楽天レシピから探せます。カテゴリ名で検索でき、「別の候補を見る」で顔ぶれが変わります。"],
+    ["写真","作るたびに溜まります。★を押した写真が一覧の表紙になります。日付は後から直せます。"],
+    ["削除","レシピ帳から消しても、過去の献立には内容がそのまま残ります。"],
+    ["バックアップ","「バックアップ」から、献立とレシピ帳をファイルに書き出せます。月に一度くらい写真ごと書き出しておくと、万一データが消えても戻せます。"],
+    ["印刷・PDF","レシピ1品ずつ、またはレシピ帳をまるごとPDFにできます。まるごとの場合は表紙ともくじが付いて、1品1ページの冊子になります。検索でしぼりこんでから押すと、その分だけ出せます。"]
+  ]}
+};
+function openHelp(){
+  const h=HELP[tab]||HELP.plan;
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>${h.t}のつかいかた</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    ${h.b.map(([t,d])=>`<div class="card" style="padding:12px 14px">
+      <div style="font-weight:600;color:var(--ink);margin-bottom:4px">${t}</div>
+      <div style="font-size:13.5px;line-height:1.7;color:#4a5058">${d}</div></div>`).join("")}
+    <h2 class="sec">このアプリの流れ</h2>
+    <div class="card" style="font-size:13.5px;line-height:1.9">
+      ① 献立タブで日にちをえらんで献立をたてる<br>
+      ② 買い物タブでリストを作って買い物に行く<br>
+      ③ 料理タブを見ながら作って、写真を撮る<br>
+      ④ 気に入ったらレシピ帳に入れる<br>
+      <span class="note">④をやるほど、次からの提案が自分たち仕様になっていきます。</span>
+    </div>
+    <h2 class="sec">AIはどうやって献立を考えているか</h2>
+    ${AIHELP.map(([t,d])=>`<div class="card" style="padding:12px 14px">
+      <div style="font-weight:600;color:var(--ink);margin-bottom:4px">${t}</div>
+      <div style="font-size:13.5px;line-height:1.7;color:#4a5058">${d}</div></div>`).join("")}`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+const AIHELP=[
+  ["① まず楽天から候補を集める",
+   "楽天レシピには数百のカテゴリがあります。そこから毎回ランダムに十数カテゴリを選び、それぞれの人気ランキングを取ってきて、数十品の候補を作ります。選ぶカテゴリは毎回変わるので、同じ顔ぶれになりません。"],
+  ["② その候補の中から選ばせる",
+   "AIには「必ずこの候補から選べ」と伝えています。候補は実在する人気レシピなので、写真・材料・分量・元レシピのURLがそのまま付いてきます。AIがゼロから考えているわけではありません。"],
+  ["③ 何を避けるかを伝える",
+   "過去に献立へ出した料理とレシピ帳にある料理を最大40品ぶん渡して「これとは違うものを」と指示しています。だんだん被りにくくなります。"],
+  ["④ 偏らないように振る",
+   "毎回ランダムに和食・洋食・中華などの系統と、焼く・煮る・蒸すなどの調理法を指定しています。季節も伝えているので、旬の食材が入りやすくなります。"],
+  ["⑤ レシピ帳にあれば、そちらを使う",
+   "提案された料理名がレシピ帳にあるときは、AIや楽天の内容は捨てて、自分たちが編集した材料と手順を使います。直した内容が毎回よみがえります。"],
+  ["AIが返すのは料理名だけ",
+   "材料や手順まで書かせると時間もお金もかかるので、AIには料理名だけを返させています。中身は楽天かレシピ帳から引いてきます。どちらにも無い料理のときだけ、写真と材料が空になります。"],
+  ["つくり方を出すとき",
+   "レシピ画面のボタンを押したときだけ、その料理の手順をAIが書きます。押さなければ何も起きないので、必要な料理のぶんだけで済みます。"],
+  ["費用のこと",
+   "AIを使うたびにわずかに課金されます（Anthropicの従量課金）。献立を数日ぶん立てて数円程度。使用量は console.anthropic.com で確認できます。"]
+];
+/* ---------- 買い物タブ ---------- */
+function renderBuy(){
+  const L=S.shopping&&S.shopping.list;
+  if(!L){ renderBuyStart(); return; }
+  const items=Object.entries(L.items||{});
+  const total=items.length, done=items.filter(([,x])=>x.done).length;
+  // 未チェックを上、チェック済みを下に
+  const sorted=items.slice().sort((a,b)=>(a[1].done?1:0)-(b[1].done?1:0));
+  const html=sorted.length?`<div class="card" style="padding:4px 13px">${sorted.map(([id,x])=>`
+    <div class="item ${x.done?"checked":""}">
+      <button class="tick ${x.done?"on":""}" onclick="tickItem('${id}')">${x.done?"✓":""}</button>
+      <div class="grow"><div class="t">${esc(x.n)}</div>
+        ${x.src?`<div class="s">${esc(x.src)}</div>`:""}</div>
+      <div class="amt">${esc(x.amt||"")}</div>
+      ${x.manual?`<button class="del" onclick="save(['shopping','list','items','${id}'],null)">削除</button>`:""}
+    </div>`).join("")}</div>`:"";
+  const span=`${L.from.slice(5).replace("-","/")}〜${L.to.slice(5).replace("-","/")}`;
+  $("app").innerHTML=`
+    <div class="card" style="padding:11px 13px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><b style="font-size:15px">残り ${total-done} ／ ${total}</b>
+          <div class="note">${span} の献立ぶん</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="mini line" onclick="shareBuy()">共有</button>
+          <button class="mini line" onclick="finishList()">買い物おわり</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;gap:8px;padding:10px">
+      <input class="field" id="buyIn" placeholder="牛乳" onkeydown="if(event.key==='Enter')addBuy()">
+      <button class="btn" onclick="addBuy()">追加</button></div>
+    ${total?html:`<div class="empty">このリストは空です。<br>上の欄から手で追加できます。</div>`}
+    <button class="btn wide quiet" style="margin-top:12px" onclick="startList()">リストを作り直す</button>
+    ${helpLink()}`;
+}
+function renderBuyStart(){
+  const n=(S.shopping&&S.shopping.days)||7;
+  $("app").innerHTML=`
+    <div class="empty" style="border:none;padding:10px 0 18px">
+      買い物に行くときに、その回のリストを作ります。<br>
+      作ったあとに献立を変えても、リストは変わりません。
+    </div>
+    <div class="card">
+      <div class="lbl">何日ぶん買う？</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[2,3,4,5,7,10,14].map(d=>`<button class="mini ${d===n?"gold":"line"}"
+          onclick="save(['shopping','days'],${d})">${d}日</button>`).join("")}
+      </div>
+      <div class="note" style="margin-top:10px">今日から${n}日ぶんの献立から、まだ作っていない料理の材料を集めます。</div>
+      <button class="btn wide" style="margin-top:12px" onclick="startList()">この期間でリストを作る</button>
+    </div>
+    ${helpLink()}`;
+}
+function startList(){
+  const n=(S.shopping&&S.shopping.days)||7;
+  const items={};
+  for(let i=0;i<n;i++){
+    const d=addDays(today,i), k=key(d), day=S.meals[k]; if(!day)continue;
+    KINDS.forEach(x=>{const dd=dishData(day[x.k]);
+      if(!dd||dd.done||!dd.ing)return;
+      dd.ing.forEach(ing=>{
+        const hit=Object.values(items).find(z=>z.n===ing.n);
+        const when=`${d.getMonth()+1}/${d.getDate()} ${dd.name}`;
+        if(hit){ if(ing.amt)hit.amts.push(ing.amt); hit.srcs.push(when); }
+        else items[uid()]={n:ing.n,amts:ing.amt?[ing.amt]:[],srcs:[when],done:false};
+      });
+    });
+  }
+  const clean={};
+  Object.entries(items).forEach(([id,x])=>{
+    clean[id]={n:x.n,amt:x.amts.join(" + "),src:x.srcs.join("・"),done:false};
+  });
+  save(["shopping","list"],{from:key(today),to:key(addDays(today,n-1)),at:Date.now(),items:clean});
+  toast(Object.keys(clean).length?`${Object.keys(clean).length}品のリストを作りました`:"対象の材料がありませんでした");
+}
+function finishList(){
+  if(!confirm("この買い物リストを閉じますか？\n（チェックの状態は消えます）"))return;
+  save(["shopping","list"],null); toast("おつかれさま");
+}
+function addBuy(){
+  const v=$("buyIn").value.trim(); if(!v)return;
+  if(!(S.shopping&&S.shopping.list)){toast("先にリストを作ってください");return}
+  save(["shopping","list","items",uid()],{n:v,amt:"",done:false,manual:true});
+}
+function tickItem(id){
+  const x=(((S.shopping||{}).list||{}).items||{})[id]; if(!x)return;
+  save(["shopping","list","items",id],Object.assign({},x,{done:!x.done}));
+}
+function shareBuy(){
+  const L=S.shopping&&S.shopping.list; if(!L)return;
+  const lines=Object.values(L.items||{}).filter(x=>!x.done)
+    .map(x=>"・"+x.n+(x.amt?" "+x.amt:""));
+  const txt=lines.join("\n")||"買うものはありません";
+  if(navigator.share)navigator.share({text:txt}).catch(()=>{});
+  else if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast("コピーしました"));
+  else toast("共有できませんでした");
+}
+
+/* ---------- レシピ帳タブ ---------- */
+function bookList(){
+  const arr=Object.entries(S.recipes).map(([id,r])=>{
+    const ph=photoList(id,r);
+    return {id,name:r.name,time:r.time,cooked:r.cooked||ph.length,photo:coverOf(r),
+            at:r.at||0, last:ph[0]?ph[0][1].date:""};
+  });
+  if(bookSort==="name") arr.sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+  else if(bookSort==="last") arr.sort((a,b)=>(b.last||"").localeCompare(a.last||"")||b.at-a.at);
+  else arr.sort((a,b)=>b.at-a.at);
+  return arr;
+}
+function renderBook(){
+  const list=bookList();
+  $("app").innerHTML=`
+    <div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">
+      <div style="flex:1;font-size:14px">人数の設定</div>
+      <select class="field" style="width:auto;padding:7px 9px" onchange="save(['settings','adults'],Number(this.value))">
+        ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${S.settings.adults===n?"selected":""}>大人${n}人</option>`).join("")}</select>
+      <select class="field" style="width:auto;padding:7px 9px" onchange="save(['settings','kids'],Number(this.value))">
+        ${[0,1,2,3,4].map(n=>`<option value="${n}" ${S.settings.kids===n?"selected":""}>子ども${n}人</option>`).join("")}</select>
+    </div>
+    ${WORKER_URL?`<button class="btn wide ghost" style="margin-bottom:10px" onclick="openSearch()">人気レシピをさがす</button>`:""}
+    ${list.length?`<input class="field" id="bookQ" placeholder="料理名でさがす" value="${esc(bookQ)}"
+        oninput="bookQ=this.value;drawBookGrid()" style="margin-bottom:8px">
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        ${[["at","追加した順"],["last","最近作った順"],["name","名前順"]].map(([v,n])=>
+          `<button class="mini ${bookSort===v?"gold":"line"}" onclick="bookSort='${v}';render()">${n}</button>`).join("")}
+      </div>
+      <div id="bookGrid"></div>
+      <button class="btn wide ghost" style="margin-top:16px" onclick="printBook()">レシピ帳をまるごとPDFにする</button>
+      <button class="btn wide quiet" style="margin-top:8px" onclick="openBackup()">バックアップ</button>
+      <div style="text-align:center;margin-top:6px">
+        <button class="mini line" onclick="printHelp()">？ PDFにするには</button></div>
+      ${helpLink()}
+      <div class="note" style="text-align:center;margin-top:16px">
+        <a href="https://recipe.rakuten.co.jp/" target="_blank" rel="noopener">Supported by 楽天レシピ</a></div>`
+      :`<div class="empty">レシピ帳はまだ空です。<br>献立の料理カードにある「帳面に入れる」を押すと、<br>その料理の材料と手順がここに残ります。<br><br>一度入れておけば、次に同じ料理が出てきたときも<br>編集した内容がそのまま使われます。</div>`}`;
+  if(list.length)drawBookGrid();
+}
+function drawBookGrid(){
+  const q=norm(bookQ);
+  const list=bookList().filter(r=>!q||norm(r.name).includes(q));
+  const box=$("bookGrid"); if(!box)return;
+  box.innerHTML=list.length?`<div class="bookGrid">${list.map(r=>`
+    <button onclick="openBook('${r.id}')">
+      ${r.photo?`<img src="${r.photo}" alt="${esc(r.name)}">`:`<span class="noimg">膳</span>`}
+      ${r.cooked?`<span class="cnt">${r.cooked}回</span>`:""}
+      <span class="cap">${esc(r.name)}</span></button>`).join("")}</div>`
+    : `<div class="empty">見つかりませんでした</div>`;
+}
+function openBook(id){
+  const r=S.recipes[id]; if(!r)return;
+  if(!PHLOAD[id]) ensurePhotos(id,()=>openBook(id));
+  const ph=photoList(id,r).filter(x=>x[1].img);
+  const meta=[r.time?`${r.time}分`:"",r.cooked?`${r.cooked}回つくった`:""].filter(Boolean).join("　");
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>${esc(r.name)}</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    ${ph.length?`<div class="photoStrip">${ph.map(([i,p])=>`<figure><img src="${p.img}" alt=""
+        style="${i===(r.cover||(ph[0]?ph[0][0]:null))?"outline:3px solid var(--yuzu);outline-offset:-3px":""}">
+        <figcaption>${esc((p.date||"").slice(5).replace("-","/"))}</figcaption></figure>`).join("")}</div>`:""}
+    <div class="note">${esc(meta||"まだ作っていません")}</div>
+    ${(r.ing||[]).length?`<h2 class="sec">材料（${servings()}）</h2><div class="card">${r.ing.map(x=>`<div class="item">
+      <div class="grow"><div class="t">${esc(x.n)}</div></div><div class="amt">${esc(x.amt)}</div></div>`).join("")}</div>`:""}
+    ${r.steps&&r.steps.length?`<h2 class="sec">つくり方</h2><div class="card"><ol class="steps">
+      ${r.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>`:""}
+    ${r.tips?`<h2 class="sec">コツ</h2><div class="card"><div style="font-size:14px">${esc(r.tips)}</div></div>`:""}
+    ${r.url?`<div class="note" style="margin-top:12px"><a href="${esc(r.url)}" target="_blank" rel="noopener">${r.source==="rakuten"?"楽天レシピで元の手順を見る":"参考リンクを開く"}</a></div>`:""}
+    <button class="btn wide" style="margin-top:14px" onclick="bookToMeal('${id}')">この料理を献立に入れる</button>
+    <button class="btn wide quiet" style="margin-top:8px" onclick="editBook('${id}')">編集する</button>
+    <button class="btn wide quiet" style="margin-top:8px" onclick="printOne('${id}')">印刷・PDFにする</button>
+    <button class="btn wide quiet" style="margin-top:8px;color:var(--danger)" onclick="delBook('${id}')">レシピ帳から削除</button>`;
+  $("sheet").classList.add("on"); $("sheetBody").dataset.day="";
+}
+function coverOf(r){
+  if(r.thumb) return r.thumb;                 // 一覧用の小さい写真
+  if(r.photos){                                // 切り替え前のデータ
+    if(r.cover&&r.photos[r.cover]) return r.photos[r.cover].img;
+    const ph=Object.values(r.photos).sort((a,b)=>(a.date<b.date?1:-1));
+    if(ph[0]) return ph[0].img;
+  }
+  return r.image||null;   // 自分の写真がなければ楽天レシピの画像
+}
+/* そのレシピの写真を、新しい順に並べて返す（読み込み済みのものだけ） */
+function photoList(id,r){
+  const loaded=photosOf(id);
+  const meta=(r&&r.photoMeta)||null;
+  if(meta&&Object.keys(meta).length){
+    return Object.entries(meta).map(([pid,m])=>
+      [pid,{date:m.date,img:(loaded[pid]&&loaded[pid].img)||null}])
+      .sort((a,b)=>((a[1].date||"")<(b[1].date||"")?1:-1));
+  }
+  if(r&&r.photos) return Object.entries(r.photos).sort((a,b)=>((a[1].date||"")<(b[1].date||"")?1:-1));
+  return [];
+}
+function photoCount(r){
+  if(r&&r.photoMeta) return Object.keys(r.photoMeta).length;
+  if(r&&r.photos) return Object.keys(r.photos).length;
+  return 0;
+}
+function editBook(id){
+  const r=S.recipes[id];
+  if(!PHLOAD[id]) ensurePhotos(id,()=>editBook(id));
+  const all=photoList(id,r);
+  const ph=all.filter(x=>x[1].img);
+  const coverId=r.cover||(ph[0]?ph[0][0]:null);
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>レシピを編集</h3>
+      <button class="btn quiet" onclick="openBook('${id}')">戻る</button></div>
+    <div class="lbl">写真（${photoCount(r)}／${PHOTO_KEEP}枚）　★が一覧に出る代表写真${
+      (all.length&&!ph.length)?"　読み込み中…":""}</div>
+    ${ph.length?`<div class="photoStrip">${ph.map(([pid,p])=>`<div class="photoCell">
+        <div class="ph">
+          <img src="${p.img}" alt="" ${pid===coverId?'class="cov"':""}>
+          <button class="pbtn del" onclick="delBookPhoto('${id}','${pid}')">×</button>
+          <button class="pbtn star ${pid===coverId?"on":""}" onclick="setCover('${id}','${pid}')">★</button>
+        </div>
+        <input type="date" value="${esc(p.date)}" onchange="setPhotoDate('${id}','${pid}',this.value)">
+      </div>`).join("")}</div>`
+      :`<div class="note" style="margin-bottom:6px">まだ写真がありません</div>`}
+    <label class="btn wide quiet" style="margin-bottom:12px">写真を追加する
+      <input type="file" accept="image/*" style="display:none" onchange="addBookPhoto(event,'${id}')"></label>
+    <div class="lbl">料理名</div><input class="field" id="eN" value="${esc(r.name)}">
+    <div class="lbl" style="margin-top:10px">調理時間（分）</div>
+    <input class="field" id="eT" type="number" inputmode="numeric" value="${r.time||""}" style="width:120px">
+    <div class="lbl" style="margin-top:12px">材料（1行に「名前, 分量」）</div>
+    <textarea class="field tall" id="eI" placeholder="玉ねぎ, 中1/2個">${esc((r.ing||[]).map(x=>`${x.n}, ${x.amt}`).join("\n"))}</textarea>
+    <div class="lbl" style="margin-top:12px">つくり方（1行に1ステップ）</div>
+    <textarea class="field taller" id="eS">${esc((r.steps||[]).join("\n"))}</textarea>
+    <div class="lbl" style="margin-top:12px">コツ</div>
+    <textarea class="field mid" id="eP">${esc(r.tips||"")}</textarea>
+    <div class="lbl" style="margin-top:12px">参考URL</div><input class="field" id="eU" type="url" value="${esc(r.url||"")}">
+    <button class="btn wide" style="margin-top:14px" onclick="saveBook('${id}')">保存</button>`;
+  $("sheet").classList.add("on"); sheetTop();
+}
+function setPhotoDate(id,pid,v){
+  if(!v)return;
+  const r=JSON.parse(JSON.stringify(S.recipes[id]));
+  if(r.photoMeta&&r.photoMeta[pid]) r.photoMeta[pid].date=v;
+  if(r.photos&&r.photos[pid]) r.photos[pid].date=v;
+  if(PH[id]&&PH[id][pid]){ PH[id][pid].date=v; savePhoto(id,pid,PH[id][pid]); }
+  saveQuiet(["recipes",id],r); render(); editBook(id); toast("日付を変えました");
+}
+function setCover(id,pid){
+  const r=JSON.parse(JSON.stringify(S.recipes[id])); r.cover=pid;
+  const src=(photosOf(id)[pid]||{}).img||((r.photos||{})[pid]||{}).img;
+  const done=thumb=>{ if(thumb)r.thumb=thumb; saveQuiet(["recipes",id],r);
+    render(); editBook(id); toast("代表写真にしました"); };
+  if(src) makeThumb(src,done); else done(null);
+}
+/* 写真がいっぱいのときは、どれを消すか選んでもらう */
+let pendingPhoto=null;
+function addBookPhoto(ev,id){
+  const f=ev.target.files&&ev.target.files[0]; if(!f)return;
+  toast("写真を縮めています…");
+  const img=new Image(), rd=new FileReader();
+  rd.onload=()=>{img.onload=()=>{
+    let w=img.width,h=img.height; const sc=Math.min(1,PHOTO_MAX/Math.max(w,h));
+    w=Math.round(w*sc); h=Math.round(h*sc);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    const data=cv.toDataURL("image/jpeg",PHOTO_Q);
+
+  };img.src=rd.result};
+  rd.readAsDataURL(f);
+}
+function commitPhoto(id,data,dropId){
+  const r=JSON.parse(JSON.stringify(S.recipes[id]));
+  const meta=Object.assign({},r.photoMeta||{});
+  if(dropId){ delete meta[dropId]; removePhoto(id,dropId); if(r.cover===dropId) delete r.cover; }
+  const pid=uid();
+  savePhoto(id,pid,{img:data,date:key(today)});
+  meta[pid]={date:key(today)};
+  r.photoMeta=meta; delete r.photos;
+  const done=thumb=>{ if(!r.cover){r.cover=pid; if(thumb)r.thumb=thumb;}
+    saveQuiet(["recipes",id],r); render(); };
+  if(!r.cover) makeThumb(data,done); else done(null);
+}
+function askWhichToDrop(id,data){
+  const r=S.recipes[id];
+  const ph=photoList(id,r);
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>写真がいっぱいです</h3>
+      <button class="btn quiet" onclick="pendingPhoto=null;editBook('${id}')">やめる</button></div>
+    <div class="note">${PHOTO_KEEP}枚まで保存できます。どれと入れ替えますか？</div>
+    <div class="photoStrip" style="margin-top:10px">
+      <figure><img src="${data}" alt="" style="outline:3px solid var(--yuzu);outline-offset:-3px">
+        <figcaption>追加する写真</figcaption></figure></div>
+    <h2 class="sec">入れ替えて消す写真をえらぶ</h2>
+    <div class="card">${ph.map(([pid,p])=>`<div class="item" style="align-items:center">
+      <img src="${p.img}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none">
+      <div class="grow"><div class="t">${esc(p.date.replace(/-/g,"/"))}${r.cover===pid?"　★代表":""}</div></div>
+      <button class="mini line" style="color:var(--danger)" onclick="dropAndAdd('${id}','${pid}')">これを消す</button>
+      </div>`).join("")}</div>`;
+  sheetTop();
+}
+function dropAndAdd(id,pid){
+  if(!pendingPhoto)return;
+  commitPhoto(id,pendingPhoto.data,pid); pendingPhoto=null;
+  editBook(id); toast("入れ替えました");
+}
+function delBookPhoto(id,pid){
+  if(!confirm("この写真を削除しますか？"))return;
+  const r=JSON.parse(JSON.stringify(S.recipes[id]));
+  const meta=Object.assign({},r.photoMeta||{}); delete meta[pid];
+  removePhoto(id,pid);
+  if(r.photos) delete r.photos[pid];
+  if(r.cover===pid){ delete r.cover; delete r.thumb; }
+  r.photoMeta=meta;
+  saveQuiet(["recipes",id],r); render(); editBook(id); toast("削除しました");
+}
+function saveBook(id){
+  const name=$("eN").value.trim(); if(!name){toast("料理名を入れてください");return}
+  const f=recipeFields({ name,
+    ing:$("eI").value.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{
+      const p=l.split(/[,、]/).map(x=>x.trim());return {n:p[0],amt:p[1]||""}}).filter(x=>x.n),
+    steps:$("eS").value.split("\n").map(l=>l.trim()).filter(Boolean),
+    tips:$("eP").value.trim(), url:$("eU").value.trim(),
+    time:$("eT").value });
+  save(["recipes",id],Object.assign({},S.recipes[id],f));
+  openBook(id); toast("保存しました");
+}
+function delBook(id){
+  const r=S.recipes[id]; if(!r)return;
+  // この料理を使っている献立を数える
+  let used=0;
+  Object.keys(S.meals).forEach(k=>KINDS.forEach(x=>{
+    const d=S.meals[k][x.k]; if(d&&d.recipeId===id)used++;}));
+  if(!confirm(`「${r.name}」をレシピ帳から削除しますか？\n${used?`献立に入っている${used}件には、いまの内容がそのまま残ります。`:""}`))return;
+  // 献立側に中身を写してから消す（過去の記録が読めなくならないように）
+  Object.keys(S.meals).forEach(k=>{
+    let changed=false;
+    const day=JSON.parse(JSON.stringify(S.meals[k]));
+    KINDS.forEach(x=>{
+      const d=day[x.k]; if(!d||d.recipeId!==id)return;
+      const copy=recipeFields(r);
+      const ph=(d.photoId&&photosOf(id)[d.photoId])?photosOf(id)[d.photoId].img:coverOf(r);
+      if(ph) copy.photo=ph;
+      copy.done=!!d.done;
+      day[x.k]=copy; changed=true;
+    });
+    if(changed) saveQuiet(["meals",k],day);
+  });
+  if(DB) DB.ref("photos/"+id).remove().catch(()=>{});
+  delete PH[id]; delete PHLOAD[id];
+  save(["recipes",id],null); closeSheet(); toast("レシピ帳から削除しました");
+}
+function bookToMeal(id){
+  $("sheetBody").innerHTML=`
+    <div class="sheetHead"><h3>いつの献立に入れる？</h3>
+      <button class="btn quiet" onclick="openBook('${id}')">戻る</button></div>
+    <div class="lbl">日付</div><input class="field" id="rD" type="date" value="${key(today)}">
+    <div class="lbl" style="margin-top:12px">枠</div>
+    <select class="field" id="rK">${KINDS.map(x=>`<option value="${x.k}">${x.nm}</option>`).join("")}</select>
+    <button class="btn wide" style="margin-top:14px" onclick="bookToMealGo('${id}')">入れる</button>`;
+}
+function bookToMealGo(id){
+  const k=$("rD").value, kk=$("rK").value;
+  if(!k){toast("日付をえらんでください");return}
+  const day=JSON.parse(JSON.stringify(S.meals[k]||{})); day[kk]={recipeId:id};
+  save(["meals",k],day); closeSheet(); toast(`${k} の${kindNm(kk)}に入れました`);
+}
+
+/* ---------- 人気レシピをさがす（楽天レシピ） ---------- */
+let catQ="";
+async function openSearch(){
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>人気レシピをさがす</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <div class="note"><span class="spin" style="border-color:rgba(0,0,0,.2);border-top-color:#16324F"></span> カテゴリを読み込んでいます</div>`;
+  $("sheet").classList.add("on"); sheetTop();
+  try{
+    await rakutenCats();
+    catQ=""; drawCats();
+  }catch(e){
+    $("sheetBody").innerHTML=`<div class="sheetHead"><h3>人気レシピをさがす</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+      <div class="empty">${esc(e.message)}</div>`;
+  }
+}
+function drawCats(){
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>人気レシピをさがす</h3>
+      <button class="btn quiet" onclick="closeSheet()">閉じる</button></div>
+    <input class="field" id="catQ" placeholder="カテゴリ名でさがす（例：鶏肉、パスタ）" value="${esc(catQ)}"
+      oninput="catQ=this.value;drawCatList()" style="margin-bottom:6px">
+    <div class="note">大きな分類を選ぶと、その中の細かいカテゴリからまとめて集めます。</div>
+    <div id="catList" style="margin-top:8px"></div>`;
+  drawCatList(); sheetTop();
+}
+function drawCatList(){
+  const box=$("catList"); if(!box)return;
+  const q=norm(catQ);
+  let list;
+  if(q){
+    list=RCATS.filter(c=>norm(c.name).includes(q)).slice(0,60);
+  }else{
+    list=RCATS.filter(c=>c.level<=2);
+  }
+  box.innerHTML=list.length?`<div class="card" style="padding:4px 13px">${list.map(c=>`
+    <div class="item">
+      <div class="grow"><div class="t">${esc(c.name)}</div>
+        <div class="s">${c.level===1?"大きな分類":c.level===2?"中分類":"細かい分類"}</div></div>
+      <button class="mini" onclick="showRanking('${c.id}','${esc(c.name)}')">見る</button>
+    </div>`).join("")}</div>`
+    : `<div class="empty">見つかりませんでした</div>`;
+}
+let RLIST=[];
+async function showRanking(catId,catName){
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>${esc(catName)}</h3>
+      <button class="btn quiet" onclick="drawCats()">戻る</button></div>
+    <div class="note"><span class="spin" style="border-color:rgba(0,0,0,.2);border-top-color:#16324F"></span> 読み込んでいます</div>`;
+  try{
+    // 楽天は1カテゴリ4件までなので、配下のカテゴリからもまとめて集める
+    const kids=RCATS.filter(c=>c.id!==catId&&c.id.startsWith(catId+"-"));
+    const ids=[catId, ...shuffle(kids).slice(0,7).map(c=>c.id)];
+    const lists=await Promise.all(ids.map(id=>rakutenRanking(id).catch(()=>[])));
+    const seen={}; RLIST=[];
+    [].concat(...lists).forEach(x=>{const k=norm(x.name);
+      if(k&&!seen[k]){seen[k]=1;RLIST.push(x)}});
+    drawRanking(catId,catName);
+  }catch(e){ toast(e.message); }
+}
+function drawRanking(catId,catName){
+  $("sheetBody").innerHTML=`<div class="sheetHead"><h3>${esc(catName)}</h3>
+      <button class="btn quiet" onclick="drawCats()">戻る</button></div>
+    <div class="note" style="display:flex;justify-content:space-between;align-items:center">
+      <span>${RLIST.length}件</span>
+      <button class="mini line" onclick="showRanking('${catId}','${esc(catName)}')">別の候補を見る</button></div>
+    ${RLIST.length?RLIST.map((x,i)=>`<div class="dish" style="margin-top:10px">
+      ${x.image?`<div class="pic"><img src="${esc(x.image)}" alt="${esc(x.name)}"></div>`:""}
+      <div class="body">
+        <div class="nm">${esc(x.name)}</div>
+        <div class="meta">${x.time?`${x.time}分・`:""}${esc((x.ing||[]).slice(0,5).map(m=>m.n).join("、"))}</div>
+        <div class="acts" style="margin-top:9px">
+          <button class="mini gold" onclick="adoptRakuten(${i})">帳面に入れる</button>
+          <a class="mini line" href="${esc(x.url)}" target="_blank" rel="noopener">楽天で見る</a>
+        </div>
+      </div></div>`).join("")
+      :`<div class="empty">レシピが取得できませんでした</div>`}
+    <div class="note" style="text-align:center;margin-top:12px">
+      <a href="https://recipe.rakuten.co.jp/" target="_blank" rel="noopener">Supported by 楽天レシピ</a></div>`;
+  sheetTop();
+}
+function adoptRakuten(i){
+  const x=RLIST[i]; if(!x)return;
+  if(findRecipeByName(x.name)){ toast("もう帳面にあります"); return; }
+  saveQuiet(["recipes",uid()],Object.assign(recipeFields(x),{at:Date.now()}));
+  render(); toast(`「${x.name}」を帳面に入れました`);
+}
+</script>
+</body>
+</html>
