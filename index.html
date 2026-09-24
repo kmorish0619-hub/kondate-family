@@ -1550,27 +1550,35 @@ function renderBuy(){
 }
 function renderBuyStart(){
   const n=(S.shopping&&S.shopping.days)||7;
+  const off=(S.shopping&&S.shopping.offset)||0;
+  const startD=addDays(today,off);
   $("app").innerHTML=`
     <div class="empty" style="border:none;padding:10px 0 18px">
       買い物に行くときに、その回のリストを作ります。<br>
       作ったあとに献立を変えても、リストは変わりません。
     </div>
     <div class="card">
-      <div class="lbl">何日ぶん買う？</div>
+      <div class="lbl">何日後から買う？</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[0,1,2,3,4,5,7].map(d=>`<button class="mini ${d===off?"gold":"line"}"
+          onclick="save(['shopping','offset'],${d})">${d===0?"今日":d+"日後"}</button>`).join("")}
+      </div>
+      <div class="lbl" style="margin-top:14px">何日ぶん買う？</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${[2,3,4,5,7,10,14].map(d=>`<button class="mini ${d===n?"gold":"line"}"
           onclick="save(['shopping','days'],${d})">${d}日</button>`).join("")}
       </div>
-      <div class="note" style="margin-top:10px">今日から${n}日ぶんの献立から、まだ作っていない料理の材料を集めます。</div>
+      <div class="note" style="margin-top:10px">${startD.getMonth()+1}/${startD.getDate()}から${n}日ぶんの献立から、まだ作っていない料理の材料を集めます。</div>
       <button class="btn wide" style="margin-top:12px" onclick="startList()">この期間でリストを作る</button>
     </div>
     ${helpLink()}`;
 }
 function startList(){
   const n=(S.shopping&&S.shopping.days)||7;
+  const off=(S.shopping&&S.shopping.offset)||0;
   const items={};
   for(let i=0;i<n;i++){
-    const d=addDays(today,i), k=key(d), day=S.meals[k]; if(!day)continue;
+    const d=addDays(today,off+i), k=key(d), day=S.meals[k]; if(!day)continue;
     KINDS.forEach(x=>{const dd=dishData(day[x.k]);
       if(!dd||dd.done||!dd.ing)return;
       dd.ing.forEach(ing=>{
@@ -1585,7 +1593,7 @@ function startList(){
   Object.entries(items).forEach(([id,x])=>{
     clean[id]={n:x.n,amt:x.amts.join(" + "),src:x.srcs.join("・"),done:false};
   });
-  save(["shopping","list"],{from:key(today),to:key(addDays(today,n-1)),at:Date.now(),items:clean});
+  save(["shopping","list"],{from:key(addDays(today,off)),to:key(addDays(today,off+n-1)),at:Date.now(),items:clean});
   toast(Object.keys(clean).length?`${Object.keys(clean).length}品のリストを作りました`:"対象の材料がありませんでした");
 }
 function finishList(){
