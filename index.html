@@ -614,7 +614,7 @@ function render(){
     $("hSub").textContent=servings();renderCook()}
   if(tab==="buy"){$("hTitle").textContent="買い物リスト";
     const L=S.shopping&&S.shopping.list;
-    $("hSub").textContent=L?`${L.from.slice(5).replace("-","/")}〜${L.to.slice(5).replace("-","/")} のぶん`:"まだリストがありません";
+    $("hSub").textContent=(L&&L.from&&L.to)?`${L.from.slice(5).replace("-","/")}〜${L.to.slice(5).replace("-","/")} のぶん`:"まだリストがありません";
     renderBuy()}
   if(tab==="book"){$("hTitle").textContent="レシピ帳";
     $("hSub").textContent=`${Object.keys(S.recipes).length}品たまっています`;renderBook()}
@@ -1516,7 +1516,7 @@ const AIHELP=[
 /* ---------- 買い物タブ ---------- */
 function renderBuy(){
   const L=S.shopping&&S.shopping.list;
-  if(!L){ renderBuyStart(); return; }
+  if(!L||!L.from||!L.to){ if(L)save(["shopping","list"],null); renderBuyStart(); return; }
   const items=Object.entries(L.items||{});
   const total=items.length, done=items.filter(([,x])=>x.done).length;
   // 未チェックを上、チェック済みを下に
